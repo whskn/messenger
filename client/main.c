@@ -1,0 +1,54 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include "network.h"
+
+#define MAX_MESSAGE_LENGTH 1024
+#define CONNECTION_TIMEOUT 5000
+
+//TEHDOLG: with json or other type of cfg file
+#define IP_ADRESS "172.0.0.1"
+#define PORT 6969
+
+int blockingConnect(const char* ip, 
+                    const int port, 
+                    const int* fd_ptr, 
+                    short timeout);
+
+int main() {
+    char msgBuffer[MAX_MESSAGE_LENGTH];
+    int clientFd;
+
+    blockingConnect(IP_ADRESS, PORT, &clientFd, CONNECTION_TIMEOUT);
+
+    while (true) {
+        printf("\n>> ");
+        if (fgets(msgBuffer, MAX_MESSAGE_LENGTH, stdin) < 0) {
+            perror("Problem with fgets()");
+            return 1;
+        }
+
+        printf("<< %s", msgBuffer);
+    }
+
+    return 0;
+}
+
+
+int blockingConnect(const char* ip, 
+                    const int port, 
+                    const int* fd_ptr, 
+                    short timeout) {
+    while (true) {
+        if(tryConnect(ip, port, fd_ptr) == 0) {
+            return 0;
+        }
+        else {
+            // TEHDOLG: error handling
+            printf("Failed to connect...");
+        }
+
+        sleep(timeout);
+    }
+
+    return 0;
+}
