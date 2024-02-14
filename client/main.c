@@ -16,9 +16,9 @@ int blockingConnect(const char* ip,
 
 int main() {
     char msgBuffer[MAX_MESSAGE_LENGTH];
-    int clientFd;
+    int sockFd;
 
-    blockingConnect(IP_ADRESS, PORT, &clientFd, CONNECTION_TIMEOUT);
+    blockingConnect(IP_ADRESS, PORT, &sockFd, CONNECTION_TIMEOUT);
 
     while (true) {
         printf("\n>> ");
@@ -27,7 +27,10 @@ int main() {
             return 1;
         }
 
-        printf("<< %s", msgBuffer);
+        if (sendMessage(sockFd, msgBuffer, sizeof(msgBuffer)) < 0) {
+            // TEHDOLG: error handling
+            return 1;
+        }
     }
 
     return 0;
@@ -39,16 +42,15 @@ int blockingConnect(const char* ip,
                     const int* fd_ptr, 
                     short timeout) {
     while (true) {
-        if(tryConnect(ip, port, fd_ptr) == 0) {
+        if (tryConnect(ip, port, fd_ptr) == 0) {
             return 0;
         }
         else {
             // TEHDOLG: error handling
             printf("Failed to connect...");
+            return 1;
         }
 
         sleep(timeout);
     }
-
-    return 0;
 }

@@ -21,7 +21,7 @@ int tryConnect(const char* ip, const int port, const int* fd_ptr) {
     return 0;
 }
 
-int sendMesage(int fd, const char* message, msg_size size) {
+int sendMessage(int fd, const char* message, msg_size_t size) {
     if (send(fd, message, size, 0)) {
         // TEHDOLG: error handling
         return -1;

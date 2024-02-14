@@ -8,8 +8,8 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 
-typedef short msg_size;
+typedef short msg_size_t;
 
 extern int tryConnect(const char* ip, const int port, const int* fd_ptr);
 
-extern int sendMesage(int fd, const char* message, msg_size size);
+extern int sendMessage(int fd, const char* message, msg_size_t size);
