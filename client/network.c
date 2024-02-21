@@ -1,8 +1,8 @@
 #include "network.h"
 
-int tryConnect(const char* ip, const int port, const int* fd_ptr) {
+int tryConnect(const char* ip, const int port, int* fd_ptr) {
     struct sockaddr_in address;
-    int status, fd;
+    int fd;
     
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         // TEHDOLG: error handling
@@ -17,6 +17,8 @@ int tryConnect(const char* ip, const int port, const int* fd_ptr) {
         // TEHDOLG: error handling
         return -1;
     } 
+
+    *fd_ptr = fd;
 
     return 0;
 }

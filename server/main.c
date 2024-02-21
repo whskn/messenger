@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include "server.h"
+#include "network.h"
 #include <pthread.h>
 
 //TEHDOLG: with json or other type of cfg file
@@ -12,10 +12,14 @@ int main() {
 
     while(true) {
         conn_t connection;
-        harvestConnections(PORT, &connection);
+        harvestConnection(PORT, &connection, connections, usernames);
 
-        pthread_attr_t 
-        pthread_create(manageConnection());
+        pthread_t thread;
+        MC_arg_t args = {&connection, usernames, connections};
+        pthread_create(&thread, 
+                       NULL, 
+                       &manageConnection, 
+                       (void*)&args);
     }
 
     return 0;

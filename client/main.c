@@ -11,26 +11,26 @@
 
 int blockingConnect(const char* ip, 
                     const int port, 
-                    const int* fd_ptr, 
+                    int* fd_ptr, 
                     short timeout);
 
 int main() {
     char msgBuffer[MAX_MESSAGE_LENGTH];
-    int sockFd;
+    int sockFd = 0;
 
-    blockingConnect(IP_ADRESS, PORT, &sockFd, CONNECTION_TIMEOUT);
+    for (;;) {
+        blockingConnect(IP_ADRESS, PORT, &sockFd, CONNECTION_TIMEOUT);
 
-    while (true) {
-        printf("\n>> ");
-        if (fgets(msgBuffer, MAX_MESSAGE_LENGTH, stdin) < 0) {
-            perror("Problem with fgets()");
-            return 1;
+        while (true) {
+            printf("\n>> ");
+            fgets(msgBuffer, MAX_MESSAGE_LENGTH, stdin);
+
+            if (sendMessage(sockFd, msgBuffer, sizeof(msgBuffer)) < 0) {
+                // TEHDOLG: error handling
+                break;
+            }
         }
-
-        if (sendMessage(sockFd, msgBuffer, sizeof(msgBuffer)) < 0) {
-            // TEHDOLG: error handling
-            return 1;
-        }
+        printf("Problem with sendMessage, or connection broke...");
     }
 
     return 0;
@@ -39,7 +39,7 @@ int main() {
 
 int blockingConnect(const char* ip, 
                     const int port, 
-                    const int* fd_ptr, 
+                    int* fd_ptr, 
                     short timeout) {
     while (true) {
         if (tryConnect(ip, port, fd_ptr) == 0) {

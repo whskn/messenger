@@ -10,6 +10,6 @@
 
 typedef short msg_size_t;
 
-extern int tryConnect(const char* ip, const int port, const int* fd_ptr);
+extern int tryConnect(const char* ip, const int port, int* fd_ptr);
 
 extern int sendMessage(int fd, const char* message, msg_size_t size);
