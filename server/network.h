@@ -13,7 +13,10 @@
 #define MAX_MESSAGE_LENGTH 1024
 #define CONNECTION_TIMEOUT 30000
 #define MAX_CONNECTIONS 512
+
 #define HANDSHAKE_CODE "HANDSHAKE"
+#define HANDSHAKE_SUCCESS "HS_SUCC"
+#define HANDSHAKE_FAIL "HS_FAIL"
 
 typedef short msg_size_t;
 typedef char username_t[64];

@@ -12,7 +12,9 @@ int main() {
 
     while(true) {
         conn_t connection;
-        harvestConnection(PORT, &connection, connections, usernames);
+        if (harvestConnection(PORT, &connection, connections, usernames)) {
+            printf("Connection harvested\n");
+        }
 
         pthread_t thread;
         MC_arg_t args = {&connection, usernames, connections};
@@ -20,6 +22,7 @@ int main() {
                        NULL, 
                        &manageConnection, 
                        (void*)&args);
+        sleep(1000); // remove
     }
 
     return 0;

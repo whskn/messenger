@@ -3,6 +3,7 @@
         "stdbool.h": "c",
         "in.h": "c",
         "stdio.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "functional": "c"
     }
 }
