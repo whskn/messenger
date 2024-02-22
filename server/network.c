@@ -39,8 +39,9 @@ int harvestConnection(const int port,
         return -1;
     }
 
+    printf("Auth time!...\n");
     username_t name;
-    if (userIdent(conn, name) < 0) {
+    if (authUser(conn, name) < 0) {
         // TEHDOLG: error handling
         close(conn.sockFd);
         printf("handshake failed...\n"); 
@@ -54,6 +55,7 @@ int harvestConnection(const int port,
 
         memcpy(names[i], name, sizeof(name));
         connections[i] = conn;
+        written = true;
     }
     // unlock semaphore
 
@@ -69,17 +71,15 @@ int harvestConnection(const int port,
     return 0;
 }
 
-int userIdent(conn_t conn, username_t username) {
-    const char* code = HANDSHAKE_CODE;
-    const int sizeOfCode = sizeof(code);
-    const int hsCodeLen = sizeOfCode * 2 + sizeof(username_t);
+int authUser(conn_t conn, username_t username) {
+    const int hsCodeLen = CODE_SIZE + sizeof(username_t);
 
-    char* msgBuffer[hsCodeLen];
+    char msgBuffer[hsCodeLen];
 
-    memset(msgBuffer, 0, sizeof(msgBuffer));
+    printf("pooling started...\n");
 
     struct pollfd fds = {.fd = conn.connFd, .events = POLLIN, .revents = 0};
-    int pollRet = poll(&fds, (nfds_t)0, CONNECTION_TIMEOUT);
+    int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT);
 
     if (pollRet < 0) {
         // TEHDOLG: error handling
@@ -91,22 +91,25 @@ int userIdent(conn_t conn, username_t username) {
         return -1;
     }
 
+    printf("got auth message...\n");
+
+    bzero(msgBuffer, hsCodeLen);
     if (read(conn.connFd, msgBuffer, hsCodeLen) < 0) {
         // TEHDOLG: error handling
         printf("fail reading username while handshake...\n"); 
         return -1;
     }
 
-    // TEHDOLG: comparing handshake codes
+    printf("read auth message...\n");
 
-    const int endCodeIdx = hsCodeLen - sizeOfCode;
-    if (!memcmp(msgBuffer, code, sizeOfCode) || 
-        !memcmp(msgBuffer[endCodeIdx], code, sizeOfCode)) {
+    if (memcmp(msgBuffer, HANDSHAKE_CODE, CODE_SIZE) != 0) {
         printf("Handshake code is wrong...\n");
         return -1;
     }
 
-    // check if name is already present
+    // TEHDOLG: check if name is already present
+    printf("checked auth message...\n");
+
     const char* hsSuccess = HANDSHAKE_SUCCESS;
     if (write(conn.connFd, hsSuccess, sizeof(hsSuccess)) < 0 ) {
         // TEHDOLG: error handling
@@ -114,7 +117,8 @@ int userIdent(conn_t conn, username_t username) {
         return -1;
     }
     
-    memcpy(username, msgBuffer[sizeOfCode], sizeof(username_t));
+    memcpy(username, msgBuffer + CODE_SIZE, sizeof(username_t));
+    
     return 0;
 }
 
@@ -150,7 +154,7 @@ void* manageConnection(void* void_args) {
         fds.revents = 0;
 
         // Blocking until message comes
-        if ((pollRet = poll(&fds, (nfds_t)0, CONNECTION_TIMEOUT)) < 0) {
+        if ((pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT)) < 0) {
             // TEHDOLG: error handling
             printf("polling failed...\n"); 
             return NULL;
@@ -176,7 +180,7 @@ void* manageConnection(void* void_args) {
         //lock semaphore
         for (int i = 0; i < MAX_CONNECTIONS; i++) {
             if ((long long int)args->usernames[i] == 0) continue;
-            if (memcmp(args->usernames[i], toUser, sizeof(username_t))) {
+            if (memcmp(args->usernames[i], toUser, sizeof(username_t)) == 0) {
                 recipientId = i;
                 break;
             }
@@ -184,10 +188,9 @@ void* manageConnection(void* void_args) {
         //unlock semaphore
 
         if (recipientId > -1) {
-            send(args->connections[recipientId].connFd, 
+            sendMessage(args->connections[recipientId].connFd, 
                  msgBuffer, 
-                 MAX_MESSAGE_LENGTH, 
-                 0);
+                 MAX_MESSAGE_LENGTH);
         }
         // write them in buffer if user is not online
     }

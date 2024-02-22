@@ -14,6 +14,7 @@
 #define CONNECTION_TIMEOUT 30000
 #define MAX_CONNECTIONS 512
 
+#define CODE_SIZE 9
 #define HANDSHAKE_CODE "HANDSHAKE"
 #define HANDSHAKE_SUCCESS "HS_SUCC"
 #define HANDSHAKE_FAIL "HS_FAIL"
@@ -41,5 +42,5 @@ extern int sendMessage(int fd, const char* message, msg_size_t size);
 
 extern void* manageConnection(void* args);
 
-extern int userIdent(conn_t conn, username_t username);
+extern int authUser(conn_t conn, username_t username);
 

@@ -12,9 +12,12 @@ int main() {
 
     while(true) {
         conn_t connection;
-        if (harvestConnection(PORT, &connection, connections, usernames)) {
-            printf("Connection harvested\n");
+        if (harvestConnection(PORT, &connection, connections, usernames) < 0) {
+            printf("Connection failed...\n");
+            continue;
         }
+
+        printf("Connection harvested\n");
 
         pthread_t thread;
         MC_arg_t args = {&connection, usernames, connections};

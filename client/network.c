@@ -35,31 +35,40 @@ int sendMessage(int fd, const char* message, msg_size_t size) {
 }
 
 int auth(int fd, username_t* username) {
-    if (sendMessage(fd, *username, sizeof(username)) < 0) {
+    int authBufferSize = CODE_SIZE + sizeof(username_t);
+    char* authBuffer = (char*)calloc(1, authBufferSize);
+    memcpy(authBuffer, HANDSHAKE_CODE, CODE_SIZE);
+    memcpy(authBuffer + CODE_SIZE, *username, sizeof(username_t));
+
+    if (sendMessage(fd, authBuffer, authBufferSize) < 0) {
         // TEHDOLG: error handling
+        free(authBuffer);
         return -1;
     }
+    free(authBuffer);
 
     struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
-    int pollRet = poll(&fds, (nfds_t)0, CONNECTION_TIMEOUT);
+    int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT);
 
     if (pollRet < 0) {
         // TEHDOLG: error handling
         printf("polling failed...\n"); 
         return -1;
     } else if (pollRet == 0) {
+        // TEHDOLG: error handling
         printf("polling timed out...\n"); 
         return -1;
     }
 
-    char buffer[sizeof(HANDSHAKE_FAIL)];
-    if (read(fd, buffer, sizeof(HANDSHAKE_FAIL)) < 0) {
+    char buffer[sizeof(HANDSHAKE_FAIL) - 1];
+    if (read(fd, buffer, sizeof(HANDSHAKE_FAIL) - 1) < 0) {
         // TEHDOLG: error handling
         printf("fail reading username while handshake...\n"); 
         return -1;
     } 
     
-    if (memcmp(buffer, HANDSHAKE_SUCCESS, sizeof(buffer))) {
+    if (memcmp(buffer, HANDSHAKE_SUCCESS, sizeof(buffer)) == 0) {
+        printf("handshake successful...\n");
         return 0;
     }
 

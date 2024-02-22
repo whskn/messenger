@@ -10,6 +10,9 @@
 #include <stdbool.h>
 
 #define CONNECTION_TIMEOUT 5000
+
+#define HANDSHAKE_CODE "HANDSHAKE"
+#define CODE_SIZE 9
 #define HANDSHAKE_SUCCESS "HS_SUCC"
 #define HANDSHAKE_FAIL "HS_FAIL"
 
