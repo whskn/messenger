@@ -14,6 +14,7 @@ int tryConnect(const char* ip, const int port, int* fd_ptr) {
     address.sin_port = htons(port);
     inet_pton(AF_INET, ip, &address.sin_addr);
     
+    
     if (connect(fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
         // TEHDOLG: error handling
         close(fd);
@@ -34,18 +35,11 @@ int sendMessage(int fd, const char* message, msg_size_t size) {
     return 0;
 }
 
-int auth(int fd, username_t* username) {
-    int authBufferSize = CODE_SIZE + sizeof(username_t);
-    char* authBuffer = (char*)calloc(1, authBufferSize);
-    memcpy(authBuffer, HANDSHAKE_CODE, CODE_SIZE);
-    memcpy(authBuffer + CODE_SIZE, *username, sizeof(username_t));
-
-    if (sendMessage(fd, authBuffer, authBufferSize) < 0) {
+int auth(int fd, username_t username) {
+    if (sendMessage(fd, username, sizeof(username_t)) < 0) {
         // TEHDOLG: error handling
-        free(authBuffer);
         return -1;
     }
-    free(authBuffer);
 
     struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
     int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT);
@@ -60,17 +54,22 @@ int auth(int fd, username_t* username) {
         return -1;
     }
 
-    char buffer[sizeof(HANDSHAKE_FAIL) - 1];
-    if (read(fd, buffer, sizeof(HANDSHAKE_FAIL) - 1) < 0) {
+    hs_code_t code;
+    if (read(fd, &code, sizeof(hs_code_t)) < 0) {
         // TEHDOLG: error handling
         printf("fail reading username while handshake...\n"); 
         return -1;
     } 
     
-    if (memcmp(buffer, HANDSHAKE_SUCCESS, sizeof(buffer)) == 0) {
-        printf("handshake successful...\n");
-        return 0;
+    switch (code) {
+        // TEHDOLG: error handling
+        case HS_MAX_CONN:
+            return -1;
+        case HS_INVAL_NAME:
+            return -1;
+        case HS_USER_EXISTS:
+            return -1;
     }
 
-    return -1;
+    return 0;
 }

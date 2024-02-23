@@ -11,17 +11,19 @@
 
 #define CONNECTION_TIMEOUT 5000
 
-#define HANDSHAKE_CODE "HANDSHAKE"
-#define CODE_SIZE 9
-#define HANDSHAKE_SUCCESS "HS_SUCC"
-#define HANDSHAKE_FAIL "HS_FAIL"
+typedef signed char hs_code_t;
+
+// HS CODES
+#define HS_SUCC (hs_code_t)0b101
+#define HS_MAX_CONN (hs_code_t)0b001
+#define HS_INVAL_NAME (hs_code_t)0b010
+#define HS_USER_EXISTS (hs_code_t)0b100
 
 typedef char username_t[64];
-
 typedef short msg_size_t;
 
 extern int tryConnect(const char* ip, const int port, int* fd_ptr);
 
 extern int sendMessage(int fd, const char* message, msg_size_t size);
 
-extern int auth(int fd, username_t* username);
+extern int auth(int fd, username_t username);

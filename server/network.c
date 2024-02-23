@@ -1,18 +1,13 @@
 #include "network.h"
 
+int openMainSocket(const int port) {
+    struct sockaddr_in address;
+    int fd;
 
-int harvestConnection(const int port, 
-                      conn_t* connection, 
-                      conn_t* connections, 
-                      username_t* names) {
-    struct sockaddr_in address, cli;
-    socklen_t cliLen;
-    conn_t conn;
-    
-    if ((conn.sockFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         // TEHDOLG: error handling
         printf("error opening socket...\n"); 
-        return -1;
+        exit(1);
     }
 
     bzero(&address, sizeof(address)); 
@@ -20,65 +15,42 @@ int harvestConnection(const int port,
     address.sin_port = htons(port);
     address.sin_addr.s_addr = htonl(INADDR_ANY); 
     
-    if ((bind(conn.sockFd, (struct sockaddr*)&address, sizeof(address))) != 0) { 
+    if ((bind(fd, (struct sockaddr*)&address, sizeof(address))) != 0) { 
         // TEHDOLG: error handling
         printf("bind failed...\n"); 
-        return -1;
+        close(fd);
+        exit(1);
     } 
 
-    if ((listen(conn.sockFd, 5)) != 0) { 
+    if ((listen(fd, CONN_QUEUE)) != 0) { 
         // TEHDOLG: error handling
         printf("Listen failed...\n"); 
-        return -1;
+        exit(1);
     } 
-   
-    if ((conn.connFd = 
-        accept(conn.sockFd, (struct sockaddr*)&cli, &cliLen)) < 0) {
+
+    return fd;
+}
+
+int harvestConnection(const int sockFd) {
+    struct sockaddr_in cli;
+    socklen_t cliLen;
+    int fd;
+
+    if ((fd = accept(sockFd, (struct sockaddr*)&cli, &cliLen)) < 0) {
         // TEHDOLG: error handling
         printf("accepting failed...\n"); 
         return -1;
     }
 
-    printf("Auth time!...\n");
-    username_t name;
-    if (authUser(conn, name) < 0) {
-        // TEHDOLG: error handling
-        close(conn.sockFd);
-        printf("handshake failed...\n"); 
-        return -1;
-    }
-
-    // lock semaphore
-    bool written = false;
-    for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        if ((long long int)names[i] != 0) continue;
-
-        memcpy(names[i], name, sizeof(name));
-        connections[i] = conn;
-        written = true;
-    }
-    // unlock semaphore
-
-    if (!written) {
-        // TEHDOLG: error handling
-        close(conn.sockFd);
-        printf("max num of connections...\n"); 
-        return 1;
-    }
-
-    *connection = conn;
-
-    return 0;
+    return fd;
 }
 
-int authUser(conn_t conn, username_t username) {
-    const int hsCodeLen = CODE_SIZE + sizeof(username_t);
+int authUser(int fd, conn_t* conns) {
+    char code;
+    char msgBuffer[sizeof(username_t) + 1];
 
-    char msgBuffer[hsCodeLen];
 
-    printf("pooling started...\n");
-
-    struct pollfd fds = {.fd = conn.connFd, .events = POLLIN, .revents = 0};
+    struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
     int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT);
 
     if (pollRet < 0) {
@@ -93,41 +65,63 @@ int authUser(conn_t conn, username_t username) {
 
     printf("got auth message...\n");
 
-    bzero(msgBuffer, hsCodeLen);
-    if (read(conn.connFd, msgBuffer, hsCodeLen) < 0) {
+    bzero(msgBuffer, sizeof(msgBuffer));
+    if (read(fd, msgBuffer, sizeof(username_t)) < 1) {
         // TEHDOLG: error handling
         printf("fail reading username while handshake...\n"); 
         return -1;
     }
 
-    printf("read auth message...\n");
-
-    if (memcmp(msgBuffer, HANDSHAKE_CODE, CODE_SIZE) != 0) {
-        printf("Handshake code is wrong...\n");
-        return -1;
-    }
-
-    // TEHDOLG: check if name is already present
-    printf("checked auth message...\n");
-
-    const char* hsSuccess = HANDSHAKE_SUCCESS;
-    if (write(conn.connFd, hsSuccess, sizeof(hsSuccess)) < 0 ) {
+    if (msgBuffer[sizeof(msgBuffer) - 1]) {
         // TEHDOLG: error handling
-        printf("fail sending handshake success code...\n"); 
+        printf("username length must be <64 chars...\n");
         return -1;
     }
     
-    memcpy(username, msgBuffer + CODE_SIZE, sizeof(username_t));
-    
+    // lock semaphore
+    int id = -1;
+    for (int i = 0; i < MAX_CONNECTIONS; i++) {
+        // need to check username if fd is not empty
+        if (conns[i].fd != EMPTY_FD) {
+            // usernames don't match -> great, iterate further
+            if (memcmp(conns[i].name, msgBuffer, sizeof(username_t))) continue;
+
+            // otherwise we have a problem, Huston
+            printf("username exists...\n");
+            if (id >= 0) conns[id].fd = EMPTY_FD;
+            code = HS_USER_EXISTS;
+            sendMessage(fd, &code, sizeof(code));
+            return -1;
+        }
+        
+        if (id < 0) {
+            memcpy(conns[i].name, msgBuffer, sizeof(username_t));
+            id = i;
+        }
+    }
+    // unlock semaphore
+
+    if (id < 0) {
+        // TEHDOLG: error handling
+        printf("server is full...\n"); 
+        return -1;
+    }
+
+    code = HS_SUCC;
+    sendMessage(fd, &code, sizeof(code));
+
     return 0;
 }
 
 int closeConnection(conn_t* conn) {
-    if (close(conn->sockFd) != 0) {
+    if (close(conn->fd) != 0) {
         // TEHDOLG: error handling
         printf("closing failed...\n"); 
         return -1;
     }
+    // mutex down
+    conn->fd = EMPTY_FD;
+    // mutex up
 
     return 0;
 }
@@ -135,6 +129,7 @@ int closeConnection(conn_t* conn) {
 int sendMessage(int fd, const char* message, msg_size_t size) {
     if (write(fd, message, size) < 0) {
         // TEHDOLG: error handling
+        printf("error sending message...\n");
         return -1;
     }
 
@@ -143,13 +138,20 @@ int sendMessage(int fd, const char* message, msg_size_t size) {
 
 void* manageConnection(void* void_args) {
     MC_arg_t* args = (MC_arg_t*)void_args;
+
+    int fd = *(args->fd);
+    conn_t* conns = args->conns;
+
+    // let the main thread know, all data is copied successfuly
+    *(args->fd) = EMPTY_FD;
+
     username_t toUser;
     char msgBuffer[MAX_MESSAGE_LENGTH];
     struct pollfd fds;
     int pollRet;
 
     for (;;) {
-        fds.fd = args->conn->connFd; 
+        fds.fd = fd; 
         fds.events = POLLIN; 
         fds.revents = 0;
 
@@ -162,13 +164,17 @@ void* manageConnection(void* void_args) {
 
         // If no data available to read
         if (pollRet == 0) {
-            closeConnection(args->conn);
+            //mutex down
+            for (int i = 0; i < MAX_CONNECTIONS; i++) {
+                if (fd == conns[i].fd) closeConnection(&conns[i]);
+            }
+            //mutex up
             printf("connection closed due to inactivity\n"); 
             break;
         }
 
         // Read the message
-        if (read(args->conn->connFd, msgBuffer, sizeof(msgBuffer)) != 0) {
+        if (read(fd, msgBuffer, sizeof(msgBuffer)) <= 0) {
             // TEHDOLG: error handling
             printf("reading failed...\n"); 
             return NULL;
@@ -176,21 +182,19 @@ void* manageConnection(void* void_args) {
 
         memcpy(toUser, msgBuffer, sizeof(toUser));
         
-        int recipientId = -1;
+        int toFd = -1;
         //lock semaphore
         for (int i = 0; i < MAX_CONNECTIONS; i++) {
-            if ((long long int)args->usernames[i] == 0) continue;
-            if (memcmp(args->usernames[i], toUser, sizeof(username_t)) == 0) {
-                recipientId = i;
+            if (conns[i].fd == EMPTY_FD) continue;
+            if (memcmp(conns[i].name, toUser, sizeof(username_t)) == 0) {
+                toFd = conns[i].fd;
                 break;
             }
         }
         //unlock semaphore
 
-        if (recipientId > -1) {
-            sendMessage(args->connections[recipientId].connFd, 
-                 msgBuffer, 
-                 MAX_MESSAGE_LENGTH);
+        if (toFd > -1) {
+            sendMessage(toFd, msgBuffer, MAX_MESSAGE_LENGTH);
         }
         // write them in buffer if user is not online
     }

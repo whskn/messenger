@@ -18,15 +18,23 @@ int main(int argc, char* argv[]) {
     char msgBuffer[MAX_MESSAGE_LENGTH];
     int sockFd = 0;
 
+    // checking and saving the username 
+    username_t username;
+    bzero(username, sizeof(username));
+    
+    size_t len = strlen(argv[1]);
+    if (len > sizeof(username_t)) {
+        printf("username's len must be <64 chars");
+        exit(1);
+    }
+    memcpy(username, argv[1], len);
+
     for (;;) {
         if (tryConnect(IP_ADDRESS, PORT, &sockFd) != 0) {
             printf("Failed to connect...\n");
             continue;
         }
-        username_t username;
-        bzero(username, sizeof(username));
-        memcpy(username, (char*)(argv[1]), strlen((char*)argv[1]));
-        if (auth(sockFd, &username) < 0) {
+        if (auth(sockFd, username) < 0) {
             // TEHDOLG: error handling
             printf("auth failed...\n");
             return -1;
