@@ -78,8 +78,8 @@ int authUser(int fd, conn_t* conns) {
         return -1;
     }
     
-    // lock semaphore
     int id = -1;
+    sem_wait(&mutex);
     for (int i = 0; i < MAX_CONNECTIONS; i++) {
         // need to check username if fd is not empty
         if (conns[i].fd != EMPTY_FD) {
@@ -99,7 +99,7 @@ int authUser(int fd, conn_t* conns) {
             id = i;
         }
     }
-    // unlock semaphore
+    sem_post(&mutex);
 
     if (id < 0) {
         // TEHDOLG: error handling
@@ -119,9 +119,9 @@ int closeConnection(conn_t* conn) {
         printf("closing failed...\n"); 
         return -1;
     }
-    // mutex down
+    sem_wait(&mutex);
     conn->fd = EMPTY_FD;
-    // mutex up
+    sem_post(&mutex);
 
     return 0;
 }
@@ -164,11 +164,12 @@ void* manageConnection(void* void_args) {
 
         // If no data available to read
         if (pollRet == 0) {
-            //mutex down
+            sem_wait(&mutex);
             for (int i = 0; i < MAX_CONNECTIONS; i++) {
                 if (fd == conns[i].fd) closeConnection(&conns[i]);
             }
-            //mutex up
+            sem_post(&mutex);
+            
             printf("connection closed due to inactivity\n"); 
             break;
         }
@@ -183,7 +184,8 @@ void* manageConnection(void* void_args) {
         memcpy(toUser, msgBuffer, sizeof(toUser));
         
         int toFd = -1;
-        //lock semaphore
+
+        sem_wait(&mutex);
         for (int i = 0; i < MAX_CONNECTIONS; i++) {
             if (conns[i].fd == EMPTY_FD) continue;
             if (memcmp(conns[i].name, toUser, sizeof(username_t)) == 0) {
@@ -191,7 +193,7 @@ void* manageConnection(void* void_args) {
                 break;
             }
         }
-        //unlock semaphore
+        sem_post(&mutex);
 
         if (toFd > -1) {
             sendMessage(toFd, msgBuffer, MAX_MESSAGE_LENGTH);

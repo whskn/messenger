@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <stdbool.h>
 #include "network.h"
 #include <pthread.h>
 
@@ -10,6 +8,11 @@ int main() {
     conn_t* conns = (conn_t*)calloc(MAX_CONNECTIONS, sizeof(conn_t));
     for (int i = 0; i < MAX_CONNECTIONS; i++) conns[i].fd = -2;
     const int sockFd = openMainSocket(PORT);
+
+    if (sem_init(&mutex, 0, 1) < 0) {
+        printf("Problem with sem_init...\n");
+        return -1;
+    }
 
     for (;;) {
         int connFd;
@@ -37,6 +40,8 @@ int main() {
             sched_yield();
         }
     }
+
+    sem_destroy(&mutex);
 
     return 0;
 }

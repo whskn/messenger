@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <stdbool.h>
 #include "network.h"
 
 #define MAX_MESSAGE_LENGTH 1024

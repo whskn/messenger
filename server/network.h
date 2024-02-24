@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <poll.h>
 #include <sys/time.h>
+#include <semaphore.h>
 
 
 #define MAX_MESSAGE_LENGTH 1024
@@ -42,3 +43,4 @@ extern void* manageConnection(void* args);
 extern int authUser(int fd, conn_t* conns);
 extern int openMainSocket(const int port);
 
+sem_t mutex;

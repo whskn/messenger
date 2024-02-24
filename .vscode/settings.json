@@ -4,6 +4,8 @@
         "in.h": "c",
         "stdio.h": "c",
         "time.h": "c",
-        "functional": "c"
+        "functional": "c",
+        "network.h": "c",
+        "stdlib.h": "c"
     }
 }
