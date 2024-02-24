@@ -2,14 +2,15 @@
 #include <pthread.h>
 
 //TEHDOLG: with json or other type of cfg file
-#define PORT 6969
+#define PORT 6972
 
 int main() {
     conn_t* conns = (conn_t*)calloc(MAX_CONNECTIONS, sizeof(conn_t));
     for (int i = 0; i < MAX_CONNECTIONS; i++) conns[i].fd = -2;
     const int sockFd = openMainSocket(PORT);
 
-    if (sem_init(&mutex, 0, 1) < 0) {
+    sem_t* mutex = (sem_t*)calloc(1, sizeof(sem_t));
+    if (sem_init(mutex, 0, 1) < 0) {
         printf("Problem with sem_init...\n");
         return -1;
     }
@@ -22,7 +23,7 @@ int main() {
             continue;
         }
 
-        if (authUser(connFd, conns) < 0) {
+        if (authUser(connFd, conns, mutex) < 0) {
             printf("Connection unsuccessfull...\n");
             continue;
         }
@@ -30,7 +31,7 @@ int main() {
         printf("Connection harvested\n");
 
         pthread_t thread; 
-        MC_arg_t args = {.fd = &connFd, .conns = conns};
+        MC_arg_t args = {.fd = &connFd, .conns = conns, .mutex = mutex};
         pthread_create(&thread, 
                        NULL, 
                        &manageConnection, 
@@ -41,7 +42,7 @@ int main() {
         }
     }
 
-    sem_destroy(&mutex);
+    sem_destroy(mutex);
 
     return 0;
 }

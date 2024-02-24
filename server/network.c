@@ -45,10 +45,9 @@ int harvestConnection(const int sockFd) {
     return fd;
 }
 
-int authUser(int fd, conn_t* conns) {
+int authUser(int fd, conn_t* conns, sem_t* mutex) {
     char code;
     char msgBuffer[sizeof(username_t) + 1];
-
 
     struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
     int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT);
@@ -72,6 +71,8 @@ int authUser(int fd, conn_t* conns) {
         return -1;
     }
 
+    printf("read auth msg...\n");
+
     if (msgBuffer[sizeof(msgBuffer) - 1]) {
         // TEHDOLG: error handling
         printf("username length must be <64 chars...\n");
@@ -79,7 +80,7 @@ int authUser(int fd, conn_t* conns) {
     }
     
     int id = -1;
-    sem_wait(&mutex);
+    sem_wait(mutex);
     for (int i = 0; i < MAX_CONNECTIONS; i++) {
         // need to check username if fd is not empty
         if (conns[i].fd != EMPTY_FD) {
@@ -99,7 +100,7 @@ int authUser(int fd, conn_t* conns) {
             id = i;
         }
     }
-    sem_post(&mutex);
+    sem_post(mutex);
 
     if (id < 0) {
         // TEHDOLG: error handling
@@ -113,15 +114,15 @@ int authUser(int fd, conn_t* conns) {
     return 0;
 }
 
-int closeConnection(conn_t* conn) {
+int closeConnection(conn_t* conn, sem_t* mutex) {
     if (close(conn->fd) != 0) {
         // TEHDOLG: error handling
         printf("closing failed...\n"); 
         return -1;
     }
-    sem_wait(&mutex);
+    sem_wait(mutex);
     conn->fd = EMPTY_FD;
-    sem_post(&mutex);
+    sem_post(mutex);
 
     return 0;
 }
@@ -141,6 +142,7 @@ void* manageConnection(void* void_args) {
 
     int fd = *(args->fd);
     conn_t* conns = args->conns;
+    sem_t* mutex = args->mutex;
 
     // let the main thread know, all data is copied successfuly
     *(args->fd) = EMPTY_FD;
@@ -164,12 +166,12 @@ void* manageConnection(void* void_args) {
 
         // If no data available to read
         if (pollRet == 0) {
-            sem_wait(&mutex);
+            sem_wait(mutex);
             for (int i = 0; i < MAX_CONNECTIONS; i++) {
-                if (fd == conns[i].fd) closeConnection(&conns[i]);
+                if (fd == conns[i].fd) closeConnection(&conns[i], mutex);
             }
-            sem_post(&mutex);
-            
+            sem_post(mutex);
+
             printf("connection closed due to inactivity\n"); 
             break;
         }
@@ -185,7 +187,7 @@ void* manageConnection(void* void_args) {
         
         int toFd = -1;
 
-        sem_wait(&mutex);
+        sem_wait(mutex);
         for (int i = 0; i < MAX_CONNECTIONS; i++) {
             if (conns[i].fd == EMPTY_FD) continue;
             if (memcmp(conns[i].name, toUser, sizeof(username_t)) == 0) {
@@ -193,7 +195,7 @@ void* manageConnection(void* void_args) {
                 break;
             }
         }
-        sem_post(&mutex);
+        sem_post(mutex);
 
         if (toFd > -1) {
             sendMessage(toFd, msgBuffer, MAX_MESSAGE_LENGTH);
