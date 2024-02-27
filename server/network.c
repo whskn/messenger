@@ -1,4 +1,5 @@
 #include "network.h"
+#include "../flags.h"
 
 int openMainSocket(const int port) {
     struct sockaddr_in address;
@@ -46,7 +47,6 @@ int harvestConnection(const int sockFd) {
 }
 
 int authUser(int fd, conn_t* conns, sem_t* mutex) {
-    char code;
     char msgBuffer[sizeof(username_t) + 1];
 
     struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
@@ -90,12 +90,12 @@ int authUser(int fd, conn_t* conns, sem_t* mutex) {
             // otherwise we have a problem, Huston
             printf("username exists...\n");
             if (id >= 0) conns[id].fd = EMPTY_FD;
-            code = HS_USER_EXISTS;
-            sendMessage(fd, &code, sizeof(code));
+            sendMessage(fd, HS_USER_EXISTS, sizeof(hs_code_t));
             return -1;
         }
         
         if (id < 0) {
+            conns[i].fd = fd;
             memcpy(conns[i].name, msgBuffer, sizeof(username_t));
             id = i;
         }
@@ -108,10 +108,9 @@ int authUser(int fd, conn_t* conns, sem_t* mutex) {
         return -1;
     }
 
-    code = HS_SUCC;
-    sendMessage(fd, &code, sizeof(code));
+    sendMessage(fd, HS_SUCC, sizeof(hs_code_t));
 
-    return 0;
+    return id;
 }
 
 int closeConnection(conn_t* conn, sem_t* mutex) {
@@ -140,20 +139,16 @@ int sendMessage(int fd, const char* message, msg_size_t size) {
 void* manageConnection(void* void_args) {
     MC_arg_t* args = (MC_arg_t*)void_args;
 
-    int fd = *(args->fd);
+    int id = args->id;
     conn_t* conns = args->conns;
     sem_t* mutex = args->mutex;
 
-    // let the main thread know, all data is copied successfuly
-    *(args->fd) = EMPTY_FD;
-
-    username_t toUser;
     char msgBuffer[MAX_MESSAGE_LENGTH];
     struct pollfd fds;
     int pollRet;
 
     for (;;) {
-        fds.fd = fd; 
+        fds.fd = conns[id].fd; 
         fds.events = POLLIN; 
         fds.revents = 0;
 
@@ -166,31 +161,30 @@ void* manageConnection(void* void_args) {
 
         // If no data available to read
         if (pollRet == 0) {
-            sem_wait(mutex);
-            for (int i = 0; i < MAX_CONNECTIONS; i++) {
-                if (fd == conns[i].fd) closeConnection(&conns[i], mutex);
-            }
-            sem_post(mutex);
-
+            closeConnection(&conns[id], mutex);
             printf("connection closed due to inactivity\n"); 
             break;
         }
 
         // Read the message
-        if (read(fd, msgBuffer, sizeof(msgBuffer)) <= 0) {
+        int ret = read(conns[id].fd, msgBuffer, sizeof(msgBuffer));
+        if (ret < 0) {
             // TEHDOLG: error handling
+            closeConnection(&conns[id], mutex);
             printf("reading failed...\n"); 
+            return NULL;
+        } else if (ret == 0) {
+            closeConnection(&conns[id], mutex);
+            printf("EOF conn closed...\n"); 
             return NULL;
         }
 
-        memcpy(toUser, msgBuffer, sizeof(toUser));
-        
         int toFd = -1;
 
         sem_wait(mutex);
         for (int i = 0; i < MAX_CONNECTIONS; i++) {
             if (conns[i].fd == EMPTY_FD) continue;
-            if (memcmp(conns[i].name, toUser, sizeof(username_t)) == 0) {
+            if (memcmp(conns[i].name, msgBuffer, sizeof(username_t)) == 0) {
                 toFd = conns[i].fd;
                 break;
             }
@@ -198,6 +192,7 @@ void* manageConnection(void* void_args) {
         sem_post(mutex);
 
         if (toFd > -1) {
+            memcpy(msgBuffer, conns[id].name, sizeof(username_t));
             sendMessage(toFd, msgBuffer, MAX_MESSAGE_LENGTH);
         }
         // write them in buffer if user is not online

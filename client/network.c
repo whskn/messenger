@@ -1,4 +1,5 @@
 #include "network.h"
+#include "../flags.h"
 
 int tryConnect(const char* ip, const int port, int* fd_ptr) {
     struct sockaddr_in address;
@@ -26,8 +27,14 @@ int tryConnect(const char* ip, const int port, int* fd_ptr) {
     return 0;
 }
 
-int sendMessage(int fd, const char* message, msg_size_t size) {
-    if (write(fd, message, size) < 0) {
+
+int sendMessage(int fd, username_t to, const char* message, msg_size_t size) {
+    size_t msgSize = size + sizeof(username_t);
+    char* buffer[msgSize];
+    memcpy(buffer, to, sizeof(username_t));
+    memcpy(buffer + sizeof(username_t), message, size);
+
+    if (write(fd, buffer, msgSize) < 0) {
         // TEHDOLG: error handling
         return -1;
     }
@@ -36,7 +43,7 @@ int sendMessage(int fd, const char* message, msg_size_t size) {
 }
 
 int auth(int fd, username_t username) {
-    if (sendMessage(fd, username, sizeof(username_t)) < 0) {
+    if (write(fd, username, sizeof(username_t)) < 0) {
         // TEHDOLG: error handling
         return -1;
     }
@@ -54,22 +61,22 @@ int auth(int fd, username_t username) {
         return -1;
     }
 
-    hs_code_t code;
+    char code[4];
     if (read(fd, &code, sizeof(hs_code_t)) < 0) {
         // TEHDOLG: error handling
         printf("fail reading username while handshake...\n"); 
         return -1;
     } 
     
-    switch (code) {
-        // TEHDOLG: error handling
-        case HS_MAX_CONN:
-            return -1;
-        case HS_INVAL_NAME:
-            return -1;
-        case HS_USER_EXISTS:
-            return -1;
-    }
+    if (*(int*)code == *(int*)HS_SUCC) {
+        return 0;
+    } else if (*(int*)code == *(int*)HS_MAX_CONN) {
+        return -1;
+    } else if (*(int*)code == *(int*)HS_INVAL_NAME) {
+        return -1;
+    } else if (*(int*)code == *(int*)HS_USER_EXISTS) {
+        return -1;
+    } 
 
     return 0;
 }

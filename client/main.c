@@ -4,7 +4,7 @@
 
 //TEHDOLG: with json or other type of cfg file
 #define IP_ADDRESS "127.0.0.1"
-#define PORT 6972
+#define PORT 6969
 
 
 int main(int argc, char* argv[]) {
@@ -38,15 +38,16 @@ int main(int argc, char* argv[]) {
             return -1;
         }
 
+        username_t reciever = "bill";
         while (true) {
             printf("\n>> ");
             fgets(msgBuffer, MAX_MESSAGE_LENGTH, stdin);
 
-            if (sendMessage(sockFd, msgBuffer, sizeof(msgBuffer)) < 0) {
+            if (sendMessage(sockFd, reciever, msgBuffer, sizeof(msgBuffer)) < 0) {
                 // TEHDOLG: error handling
+                close(sockFd);
                 break;
             }
-            close(sockFd);
         }
         printf("Problem with sendMessage, or connection broke...");
     }

@@ -13,15 +13,11 @@
 #include <sys/stat.h>
 
 #define MAX_MESSAGE_LENGTH 1024
-#define CONNECTION_TIMEOUT 30000
+#define CONNECTION_TIMEOUT 300000
 #define MAX_CONNECTIONS 512
 #define CONN_QUEUE 5
 
-// HS CODES
-#define HS_SUCC (char)0b101
-#define HS_MAX_CONN (char)0b001
-#define HS_INVAL_NAME (char)0b010
-#define HS_USER_EXISTS (char)0b100
+typedef int hs_code_t;
 
 #define EMPTY_FD (int)-2
 
@@ -34,7 +30,7 @@ typedef struct {
 } conn_t;
 
 typedef struct {
-    int* fd; 
+    int id; 
     conn_t* conns;
     sem_t* mutex;
 } MC_arg_t;

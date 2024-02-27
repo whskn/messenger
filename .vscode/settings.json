@@ -6,6 +6,8 @@
         "time.h": "c",
         "functional": "c",
         "network.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "stat.h": "c",
+        "socket.h": "c"
     }
 }

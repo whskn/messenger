@@ -2,7 +2,7 @@
 #include <pthread.h>
 
 //TEHDOLG: with json or other type of cfg file
-#define PORT 6972
+#define PORT 6969
 
 int main() {
     conn_t* conns = (conn_t*)calloc(MAX_CONNECTIONS, sizeof(conn_t));
@@ -23,7 +23,8 @@ int main() {
             continue;
         }
 
-        if (authUser(connFd, conns, mutex) < 0) {
+        int id;
+        if ((id = authUser(connFd, conns, mutex)) < 0) {
             printf("Connection unsuccessfull...\n");
             continue;
         }
@@ -31,15 +32,12 @@ int main() {
         printf("Connection harvested\n");
 
         pthread_t thread; 
-        MC_arg_t args = {.fd = &connFd, .conns = conns, .mutex = mutex};
+        MC_arg_t args = {.id = id, .conns = conns, .mutex = mutex};
         pthread_create(&thread, 
                        NULL, 
                        &manageConnection, 
                        (void*)&args);
 
-        while (connFd != EMPTY_FD) {
-            sched_yield();
-        }
     }
 
     sem_destroy(mutex);
