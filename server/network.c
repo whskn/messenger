@@ -143,7 +143,7 @@ void* manageConnection(void* void_args) {
     conn_t* conns = args->conns;
     sem_t* mutex = args->mutex;
 
-    char msgBuffer[MAX_MESSAGE_LENGTH];
+    char msgBuffer[MAX_MESSAGE_LENGTH + sizeof(username_t)];
     struct pollfd fds;
     int pollRet;
 
@@ -193,7 +193,7 @@ void* manageConnection(void* void_args) {
 
         if (toFd > -1) {
             memcpy(msgBuffer, conns[id].name, sizeof(username_t));
-            sendMessage(toFd, msgBuffer, MAX_MESSAGE_LENGTH);
+            sendMessage(toFd, msgBuffer, sizeof(msgBuffer));
         }
         // write them in buffer if user is not online
     }

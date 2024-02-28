@@ -30,15 +30,39 @@ int tryConnect(const char* ip, const int port, int* fd_ptr) {
 
 int sendMessage(int fd, username_t to, const char* message, msg_size_t size) {
     size_t msgSize = size + sizeof(username_t);
-    char* buffer[msgSize];
+    char* buffer = (char*)calloc(1, msgSize);
     memcpy(buffer, to, sizeof(username_t));
     memcpy(buffer + sizeof(username_t), message, size);
 
     if (write(fd, buffer, msgSize) < 0) {
         // TEHDOLG: error handling
+        free(buffer);
         return -1;
     }
 
+    free(buffer);
+    return 0;
+}
+
+int readMsg(int fd, username_t name, char* buffer, size_t size) {
+    size_t bufferSize = sizeof(username_t) + size;
+    char* tempBuffer = (char*)malloc(bufferSize);
+    int ret = read(fd, tempBuffer, bufferSize);
+
+    if (ret < 0) {
+        printf("Problem with readMsg...\n");
+        free(tempBuffer);
+        return -1;
+    } else if (ret == 0) {
+        printf("EOF found while reading...\n");
+        free(tempBuffer);
+        return -1;
+    }
+
+    memcpy(name, tempBuffer, sizeof(username_t));
+    memcpy(buffer, tempBuffer + sizeof(username_t), size);
+
+    free(tempBuffer);
     return 0;
 }
 
@@ -49,7 +73,7 @@ int auth(int fd, username_t username) {
     }
 
     struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
-    int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT);
+    int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT * 1000);
 
     if (pollRet < 0) {
         // TEHDOLG: error handling
