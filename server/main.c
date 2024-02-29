@@ -2,7 +2,7 @@
 #include <pthread.h>
 
 //TEHDOLG: with json or other type of cfg file
-#define PORT 6971
+#define PORT 6969
 
 int main() {
     conn_t* conns = (conn_t*)calloc(MAX_CONNECTIONS, sizeof(conn_t));
@@ -37,7 +37,6 @@ int main() {
                        NULL, 
                        &manageConnection, 
                        (void*)&args);
-
     }
 
     sem_destroy(mutex);

@@ -1,10 +1,11 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g
+LIBS = -lncurses
 
 all: client server
 
-client: client/main.o client/network.o
-	$(CC) $(CFLAGS) -o client/client $^
+client: client/main.o client/network.o client/interface.o
+	$(CC) $(CFLAGS) -o client/client $^ $(LIBS)
 	rm -f client/*.o
 
 client/main.o: client/main.c client/network.h 
@@ -12,6 +13,9 @@ client/main.o: client/main.c client/network.h
 
 client/network.o: client/network.c client/network.h flags.h 
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+client/interface.o: client/interface.c client/interface.h 
+	$(CC) $(CFLAGS) -c -o $@ $< 
 
 
 server: server/main.o server/network.o

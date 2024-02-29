@@ -27,7 +27,6 @@ int tryConnect(const char* ip, const int port, int* fd_ptr) {
     return 0;
 }
 
-
 int sendMessage(int fd, username_t to, const char* message, msg_size_t size) {
     size_t msgSize = size + sizeof(username_t);
     char* buffer = (char*)calloc(1, msgSize);

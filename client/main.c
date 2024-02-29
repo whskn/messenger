@@ -1,15 +1,20 @@
 #include "network.h"
+#include "interface.h"
 #include <pthread.h>
 
 #define MAX_MESSAGE_LENGTH 1024
 
 //TEHDOLG: with json or other type of cfg file
 #define IP_ADDRESS "127.0.0.1"
-#define PORT 6971
+#define PORT 6969
 
 
 int main(int argc, char* argv[]) {
+    init_ncur();
+    draw_top_bar();
+
     if (argc < 2) {
+        end_ncur();
         printf("Usage: client [username]\n");
         return -1;
     }
@@ -37,6 +42,7 @@ int main(int argc, char* argv[]) {
         }
         if (auth(fd, username) < 0) {
             // TEHDOLG: error handling
+            end_ncur();
             printf("auth failed...\n");
             return -1;
         }
@@ -86,5 +92,6 @@ int main(int argc, char* argv[]) {
         printf("Problem with sendMessage, or connection broke...\n");
     }
 
+    end_ncur();
     return 0;
 }
