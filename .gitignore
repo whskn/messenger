@@ -2,3 +2,5 @@ client/client
 server/server
 *.o
 .vscode
+server
+client
