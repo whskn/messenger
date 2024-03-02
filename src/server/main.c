@@ -2,7 +2,7 @@
 #include <pthread.h>
 
 //TEHDOLG: with json or other type of cfg file
-#define PORT 6969
+#define PORT 6971
 
 int main() {
     conn_t* conns = (conn_t*)calloc(MAX_CONNECTIONS, sizeof(conn_t));

@@ -90,7 +90,7 @@ int authUser(int fd, conn_t* conns, sem_t* mutex) {
             // otherwise we have a problem, Huston
             printf("username exists...\n");
             if (id >= 0) conns[id].fd = EMPTY_FD;
-            sendMessage(fd, HS_USER_EXISTS, sizeof(hs_code_t));
+            write(fd, HS_USER_EXISTS, sizeof(hs_code_t));
             return -1;
         }
         
@@ -108,7 +108,7 @@ int authUser(int fd, conn_t* conns, sem_t* mutex) {
         return -1;
     }
 
-    sendMessage(fd, HS_SUCC, sizeof(hs_code_t));
+    if (write(fd, HS_SUCC, sizeof(hs_code_t)) < 0) return -1;
 
     return id;
 }
@@ -126,8 +126,9 @@ int closeConnection(conn_t* conn, sem_t* mutex) {
     return 0;
 }
 
-int sendMessage(int fd, const char* message, msg_size_t size) {
-    if (write(fd, message, size) < 0) {
+int sendMessage(int fd, msg_t* msg) {
+    ssize_t packet_size = msg->msg_size + sizeof(*msg) - sizeof(msg->buffer);
+    if (write(fd, msg, packet_size) < 0) {
         // TEHDOLG: error handling
         printf("error sending message...\n");
         return -1;
@@ -143,7 +144,8 @@ void* manageConnection(void* void_args) {
     conn_t* conns = args->conns;
     sem_t* mutex = args->mutex;
 
-    char msgBuffer[MAX_MESSAGE_LENGTH + sizeof(username_t)];
+    msg_t* msg = (msg_t*)calloc(1, sizeof(msg_t));
+
     struct pollfd fds;
     int pollRet;
 
@@ -156,7 +158,7 @@ void* manageConnection(void* void_args) {
         if ((pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT)) < 0) {
             // TEHDOLG: error handling
             printf("polling failed...\n"); 
-            return NULL;
+            break;
         }
 
         // If no data available to read
@@ -167,16 +169,24 @@ void* manageConnection(void* void_args) {
         }
 
         // Read the message
-        int ret = read(conns[id].fd, msgBuffer, sizeof(msgBuffer));
+        int ret = read(conns[id].fd, msg, sizeof(*msg));
         if (ret < 0) {
             // TEHDOLG: error handling
-            closeConnection(&conns[id], mutex);
             printf("reading failed...\n"); 
-            return NULL;
+            break;
         } else if (ret == 0) {
-            closeConnection(&conns[id], mutex);
             printf("EOF conn closed...\n"); 
-            return NULL;
+            break;
+        }
+
+        if (ret < MIN_MESSAGE_LEN || 
+            (size_t)ret != (msg->msg_size + sizeof(*msg) - sizeof(msg->buffer)) ||
+            msg->msg_size < 1 ||
+            msg->timestamp == 0 ||
+            *(msg->names.to) == '\0' ||
+            *(msg->names.from) == '\0') {
+            printf("Invalid message format recieved...\n");
+            continue;
         }
 
         int toFd = -1;
@@ -184,19 +194,20 @@ void* manageConnection(void* void_args) {
         sem_wait(mutex);
         for (int i = 0; i < MAX_CONNECTIONS; i++) {
             if (conns[i].fd == EMPTY_FD) continue;
-            if (memcmp(conns[i].name, msgBuffer, sizeof(username_t)) == 0) {
+            if (memcmp(conns[i].name, msg->names.to, sizeof(username_t)) == 0) {
                 toFd = conns[i].fd;
                 break;
             }
         }
         sem_post(mutex);
 
-        if (toFd > -1) {
-            memcpy(msgBuffer, conns[id].name, sizeof(username_t));
-            sendMessage(toFd, msgBuffer, sizeof(msgBuffer));
-        }
+        if (toFd > -1) sendMessage(toFd, msg);
+        else printf("Message to unexisting user...\n");
         // write them in buffer if user is not online
     }
+
+    closeConnection(&conns[id], mutex);
+    free(msg);
 
     return NULL;
 }

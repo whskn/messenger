@@ -14,10 +14,25 @@
 
 typedef int hs_code_t;
 
-typedef char username_t[64];
-typedef short msg_size_t;
+#define MAX_MESSAGE_LENGTH 2048
 
-extern int tryConnect(const char* ip, const int port, int* fd_ptr);
-extern int sendMessage(int fd, username_t to, const char* message, msg_size_t size);
-extern int auth(int fd, username_t username);
-extern int readMsg(int fd, username_t name, char* buffer, size_t size);
+// sizeof(username_t) * 2 + sizeof(time_t) + sizeof(size_t) + sizeof(char) = 81
+#define MIN_MESSAGE_LEN 81
+
+typedef char username_t[32];
+
+typedef struct {
+    username_t from;
+    username_t to;
+} fromto_t;
+
+typedef struct {
+    fromto_t names;
+    time_t timestamp;
+    size_t msg_size;
+    char buffer[MAX_MESSAGE_LENGTH];
+} msg_t;
+
+extern int sendMessage(int fd, msg_t* msg);
+extern int readMsg(int fd, msg_t* msg, username_t me);
+extern int clientConnect(const char* ip, const int port, username_t username);

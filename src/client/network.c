@@ -1,6 +1,7 @@
 #include "network.h"
 #include "../flags.h"
 
+
 int tryConnect(const char* ip, const int port, int* fd_ptr) {
     struct sockaddr_in address;
     int fd;
@@ -24,44 +25,6 @@ int tryConnect(const char* ip, const int port, int* fd_ptr) {
 
     *fd_ptr = fd;
 
-    return 0;
-}
-
-int sendMessage(int fd, username_t to, const char* message, msg_size_t size) {
-    size_t msgSize = size + sizeof(username_t);
-    char* buffer = (char*)calloc(1, msgSize);
-    memcpy(buffer, to, sizeof(username_t));
-    memcpy(buffer + sizeof(username_t), message, size);
-
-    if (write(fd, buffer, msgSize) < 0) {
-        // TEHDOLG: error handling
-        free(buffer);
-        return -1;
-    }
-
-    free(buffer);
-    return 0;
-}
-
-int readMsg(int fd, username_t name, char* buffer, size_t size) {
-    size_t bufferSize = sizeof(username_t) + size;
-    char* tempBuffer = (char*)malloc(bufferSize);
-    int ret = read(fd, tempBuffer, bufferSize);
-
-    if (ret < 0) {
-        printf("Problem with readMsg...\n");
-        free(tempBuffer);
-        return -1;
-    } else if (ret == 0) {
-        printf("EOF found while reading...\n");
-        free(tempBuffer);
-        return -1;
-    }
-
-    memcpy(name, tempBuffer, sizeof(username_t));
-    memcpy(buffer, tempBuffer + sizeof(username_t), size);
-
-    free(tempBuffer);
     return 0;
 }
 
@@ -100,6 +63,65 @@ int auth(int fd, username_t username) {
     } else if (*(int*)code == *(int*)HS_USER_EXISTS) {
         return -1;
     } 
+
+    return 0;
+}
+
+int clientConnect(const char* ip, const int port, username_t username) {
+    int fd;
+
+    if (tryConnect(ip, port, &fd) != 0) {
+        printf("Failed to connect...\n");
+        return -1;
+    }
+
+    if (auth(fd, username) < 0) {
+        // TEHDOLG: error handling
+        printf("auth failed...\n");
+        return -2;
+    }
+
+    return fd;
+}
+
+
+
+int sendMessage(int fd, msg_t* msg) {
+    ssize_t packet_size = msg->msg_size + sizeof(*msg) - sizeof(msg->buffer);
+    if (packet_size < MIN_MESSAGE_LEN) {
+        printf("Invalid message format...\n");
+        return -2;
+    }
+    
+    if (write(fd, msg, packet_size) < 0) {
+        // TEHDOLG: error handling
+        return -1;
+    }
+
+    return 0;
+}
+
+int readMsg(int fd, msg_t* msg, username_t me) {
+    ssize_t ret = read(fd, msg, sizeof(*msg));
+
+    if (ret < 0) {
+        printf("Problem with readMsg...\n");
+        return -1;
+    } else if (ret == 0) {
+        printf("EOF found while reading...\n");
+        return -2;
+    } 
+
+    if (ret < MIN_MESSAGE_LEN || 
+        (size_t)ret != (msg->msg_size + sizeof(*msg) - sizeof(msg->buffer)) ||
+        msg->msg_size < 1 ||
+        *(msg->names.to) == '\0' ||
+        *(msg->names.from) == '\0' ||
+        msg->timestamp == 0 ||
+        memcmp(msg->names.to, me, sizeof(username_t)) != 0) {
+        printf("Invalid message format recieved...\n");
+        return -3;
+    }
 
     return 0;
 }
