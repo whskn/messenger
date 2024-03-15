@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #define CONNECTION_TIMEOUT 3
+#define CONN_RETRY 2
 #define AFK_TIMEOUT -1
 
 typedef int hs_code_t;
@@ -33,6 +34,13 @@ typedef struct {
     char buffer[MAX_MESSAGE_LENGTH];
 } msg_t;
 
-extern int sendMessage(int fd, msg_t* msg);
-extern int readMsg(int fd, msg_t* msg, username_t me);
-extern int clientConnect(const char* ip, const int port, username_t username);
+typedef struct {
+    int fd;
+    fromto_t addr;
+    msg_t* msg;
+} connection_t;
+
+extern int sendMessage(connection_t* c, char* buffer, size_t length);
+extern int readMsg(connection_t* c);
+extern int clientConnect(connection_t* c, const char* ip, const int port);
+extern int closeConn(connection_t* c);

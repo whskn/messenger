@@ -5,11 +5,14 @@ CFLAGS = -Wall -Wextra -g
 all: client server
 
 
-client: src/client/main.o src/client/network.o 
+client: src/client/main.o src/client/network.o src/client/ui.o
 	$(CC) $(CFLAGS) -o client $^ 
 	rm -f src/client/*.o
 
-src/client/main.o: src/client/main.c src/client/network.h 
+src/client/main.o: src/client/main.c src/client/network.h src/client/ui.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+src/client/ui.o: src/client/ui.c src/client/ui.h 
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 src/client/network.o: src/client/network.c src/client/network.h src/flags.h 

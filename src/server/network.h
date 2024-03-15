@@ -22,9 +22,6 @@
 #define MIN_MESSAGE_LEN 81
 
 typedef int hs_code_t;
-
-
-
 typedef char username_t[32];
 
 typedef struct {
@@ -50,8 +47,8 @@ typedef struct {
     sem_t* mutex;
 } MC_arg_t;
 
-extern int harvestConnection(const int sockFd);
+extern int harvestConnection(const int sockFd, int* fd);
 extern int sendMessage(int fd, msg_t* msg);
 extern void* manageConnection(void* args);
 extern int authUser(int fd, conn_t* conns, sem_t* mutex);
-extern int openMainSocket(const int port);
+extern int openMainSocket(const int port, int* fd);

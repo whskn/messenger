@@ -1,0 +1,7 @@
+FROM ubuntu
+
+COPY client /usr/bin/
+
+ENV port = "6969"
+
+ENTRYPOINT [ "server" ]
