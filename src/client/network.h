@@ -9,7 +9,7 @@
 #include <poll.h>
 #include <stdbool.h>
 
-#define CONNECTION_TIMEOUT 3
+#define CONNECTION_TIMEOUT 6000 // change
 #define CONN_RETRY 2
 #define AFK_TIMEOUT -1
 

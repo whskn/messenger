@@ -1,5 +1,6 @@
 #include "network.h"
 #include "../flags.h"
+#include <errno.h>
 
 /**
  * This function opens main socket that will recieve connections.
@@ -72,8 +73,9 @@ int harvestConnection(const int sockFd, int* fd) {
  *         2 - timed out;
  *         3 - auth unsuccessful;
 */
-int authUser(int fd, conn_t* conns, sem_t* mutex) {
+int authUser(int fd, int* idptr, conn_t* conns, sem_t* mutex) {
     char msgBuffer[sizeof(username_t)];
+    bzero(msgBuffer, sizeof(msgBuffer));
 
     // waiting for username
     struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
@@ -82,9 +84,7 @@ int authUser(int fd, conn_t* conns, sem_t* mutex) {
     else if (pollRet == 0) return 2;
 
     // reading username
-    bzero(msgBuffer, sizeof(msgBuffer));
     if (read(fd, msgBuffer, sizeof(username_t)) < 1) return 1;
-
     
     // checking if such username is already present
     int id = -1;
@@ -97,11 +97,14 @@ int authUser(int fd, conn_t* conns, sem_t* mutex) {
 
             // otherwise we have a problem, Huston
             if (id >= 0) conns[id].fd = EMPTY_FD;
-            if (write(fd, HS_USER_EXISTS, sizeof(hs_code_t)) < 0) return 1;
+            if (write(fd, HS_USER_EXISTS, sizeof(hs_code_t)) != 
+                sizeof(hs_code_t)) {
+                    sem_post(mutex);
+                    return 1;
+                } 
+            sem_post(mutex);
             return 3;
-        }
-        
-        if (id < 0) {
+        } else if (id < 0) {
             conns[i].fd = fd;
             memcpy(conns[i].name, msgBuffer, sizeof(username_t));
             id = i;
@@ -110,13 +113,16 @@ int authUser(int fd, conn_t* conns, sem_t* mutex) {
     sem_post(mutex);
 
     if (id < 0) {
-        if (write(fd, HS_MAX_CONN, sizeof(hs_code_t)) < 0) return 1;
+        if (write(fd, HS_MAX_CONN, sizeof(hs_code_t)) != sizeof(hs_code_t)) {
+            return 1;
+        }
         return 3;
     }
 
-    if (write(fd, HS_SUCC, sizeof(hs_code_t)) < 0) return 1;
+    if (write(fd, HS_SUCC, sizeof(hs_code_t)) != sizeof(hs_code_t)) return 1;
+    *idptr = id;
 
-    return id;
+    return 0;
 }
 
 /**
@@ -212,14 +218,26 @@ void* manageConnection(void* void_args) {
     for (;;) {
         // Blocking until message comes
         struct pollfd fds = {.fd = conns[id].fd, .events = POLLIN, .revents = 0};
-        if (poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT) <= 0) break;
+        if (poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT) <= 0) {
+            printf("Poll failed, errno: %s\n", strerror(errno));
+            break;
+        }
 
         // Read the message
-        int readRet;
-        if((readRet = read(conns[id].fd, msg, sizeof(*msg))) <= 0) break;
+        int readRet = read(conns[id].fd, msg, sizeof(*msg));
+        if (readRet < 0) {
+            printf("Failed to read message, errno: %s\n", strerror(errno));
+            break;
+        } else if (readRet == 0) {
+            printf("EOF, connection closed...\n");
+            break;
+        }
 
         // checking message for validity
-        if (!messageIsValid(readRet, msg)) continue;
+        if (!messageIsValid(readRet, msg)) {
+            printf("Recieved an invalid message...\n");
+            continue;
+        } 
 
         // finding fd of the reciever 
         int toFd = findUser(conns, msg->names.to, mutex);
@@ -228,7 +246,9 @@ void* manageConnection(void* void_args) {
         if (toFd > -1) sendMessage(toFd, msg);
     }
 
-    closeConnection(&conns[id], mutex);
+    if (closeConnection(&conns[id], mutex) != 0) {
+        printf("Failed to read message, errno: %s\n", strerror(errno));
+    }
     free(msg);
 
     return NULL;

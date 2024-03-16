@@ -1,5 +1,6 @@
 #include "network.h"
 #include <pthread.h>
+#include <errno.h>
 
 #define PORT 6969
 
@@ -21,13 +22,13 @@ int main() {
     for (int i = 0; i < MAX_CONNECTIONS; i++) conns[i].fd = -2;
     
     //opening socket
-    const int sockFd;
+    int sockFd;
     if (openMainSocket(port, &sockFd) != 0) {
-        //TEHDOLG
-        printf("Problem with opening the socket...\n");
+        printf("Problem opening socket: %s\n", strerror(errno));
         exit(1);
     }
 
+    // getting a mutex
     sem_t* mutex = (sem_t*)calloc(1, sizeof(sem_t));
     if (sem_init(mutex, 0, 1) < 0) {
         printf("Problem with sem_init...\n");
@@ -37,18 +38,19 @@ int main() {
     for (;;) {
         int connFd = EMPTY_FD;
         if (harvestConnection(sockFd, &connFd) != 0) {
-            printf("Connection failed...\n");
-            sleep(1); // remove
+            printf("Failed to harvest, errno: %s\n", strerror(errno));
             continue;
         }
 
-        int id;
-        if ((id = authUser(connFd, conns, mutex)) < 0) {
-            printf("Connection unsuccessfull...\n");
-            continue;
-        }
-
-        printf("Connection harvested\n");
+        int id = 3;
+        int authRet = authUser(connFd, &id, conns, mutex);
+        if (authRet == 1) {
+            printf("Failed to auth, errno: %s\n", strerror(errno));
+        } else if (authRet == 2) {
+            printf("Connection timed out, no response from the user...\n");
+        } else if (authRet == 3) {
+            printf("Auth unsuccessfull...\n");
+        } if (authRet > 0) continue;
 
         pthread_t thread; 
         MC_arg_t args = {.id = id, .conns = conns, .mutex = mutex};
@@ -59,6 +61,9 @@ int main() {
     }
 
     sem_destroy(mutex);
+    free(conns);
+    free(mutex);
+    close(sockFd);
 
     return 0;
 }

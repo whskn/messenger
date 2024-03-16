@@ -50,5 +50,5 @@ typedef struct {
 extern int harvestConnection(const int sockFd, int* fd);
 extern int sendMessage(int fd, msg_t* msg);
 extern void* manageConnection(void* args);
-extern int authUser(int fd, conn_t* conns, sem_t* mutex);
+extern int authUser(int fd, int* idptr, conn_t* conns, sem_t* mutex);
 extern int openMainSocket(const int port, int* fd);
