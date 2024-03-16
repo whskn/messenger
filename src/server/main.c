@@ -1,6 +1,6 @@
 #include "network.h"
+#include "logger.h"
 #include <pthread.h>
-#include <errno.h>
 
 #define PORT 6969
 
@@ -10,10 +10,10 @@ int main() {
     const int port = PORT;
     // const int port = atoi(getenv("port"));
     if (port == 0) {
-        printf("Missing ip or port env variable...\n");
+        logger(LOG_ERROR, "Missing ip or port env variable", false);
         return -1;
     } else if (port < 1024 || port > 65535) {
-        printf("Invalid port...\n");
+        logger(LOG_ERROR, "Invalid port", false);
         return -1;
     }
 
@@ -24,32 +24,32 @@ int main() {
     //opening socket
     int sockFd;
     if (openMainSocket(port, &sockFd) != 0) {
-        printf("Problem opening socket: %s\n", strerror(errno));
+        logger(LOG_ERROR, "Problem opening socket", true);
         exit(1);
     }
 
     // getting a mutex
     sem_t* mutex = (sem_t*)calloc(1, sizeof(sem_t));
     if (sem_init(mutex, 0, 1) < 0) {
-        printf("Problem with sem_init...\n");
+        logger(LOG_ERROR, "Problem with sem_init", true);
         exit(1);
     }
 
     for (;;) {
         int connFd = EMPTY_FD;
         if (harvestConnection(sockFd, &connFd) != 0) {
-            printf("Failed to harvest, errno: %s\n", strerror(errno));
+            logger(LOG_WARNING, "Error while accepting a connection", true);
             continue;
         }
 
         int id = 3;
         int authRet = authUser(connFd, &id, conns, mutex);
         if (authRet == 1) {
-            printf("Failed to auth, errno: %s\n", strerror(errno));
+            logger(LOG_WARNING, "Failed to auth user", true);
         } else if (authRet == 2) {
-            printf("Connection timed out, no response from the user...\n");
+            logger(LOG_INFO, "No response from the user", false);
         } else if (authRet == 3) {
-            printf("Auth unsuccessfull...\n");
+            logger(LOG_INFO, "Auth unsuccessfull", false);
         } if (authRet > 0) continue;
 
         pthread_t thread; 

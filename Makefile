@@ -19,14 +19,17 @@ src/client/network.o: src/client/network.c src/client/network.h src/flags.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 
-server: src/server/main.o src/server/network.o 
+server: src/server/main.o src/server/network.o src/server/logger.o
 	$(CC) $(CFLAGS) -o server $^
 	rm -f src/server/*.o
 
 src/server/main.o: src/server/main.c src/server/network.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-src/server/network.o: src/server/network.c src/server/network.h src/flags.h
+src/server/network.o: src/server/network.c src/server/network.h src/server/logger.h src/flags.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+src/server/logger.o: src/server/logger.c src/server/logger.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 

@@ -1,5 +1,6 @@
 #include "network.h"
 #include "../flags.h"
+#include "logger.h"
 #include <errno.h>
 
 /**
@@ -219,23 +220,23 @@ void* manageConnection(void* void_args) {
         // Blocking until message comes
         struct pollfd fds = {.fd = conns[id].fd, .events = POLLIN, .revents = 0};
         if (poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT) <= 0) {
-            printf("Poll failed, errno: %s\n", strerror(errno));
+            logger(LOG_ERROR, "Poll failed", true);
             break;
         }
 
         // Read the message
         int readRet = read(conns[id].fd, msg, sizeof(*msg));
         if (readRet < 0) {
-            printf("Failed to read message, errno: %s\n", strerror(errno));
+            logger(LOG_WARNING, "Failed to read message", true);
             break;
         } else if (readRet == 0) {
-            printf("EOF, connection closed...\n");
+            logger(LOG_INFO, "EOF, connection closed", false);
             break;
         }
 
         // checking message for validity
         if (!messageIsValid(readRet, msg)) {
-            printf("Recieved an invalid message...\n");
+            logger(LOG_WARNING, "Invalid message format", false);
             continue;
         } 
 
@@ -247,7 +248,7 @@ void* manageConnection(void* void_args) {
     }
 
     if (closeConnection(&conns[id], mutex) != 0) {
-        printf("Failed to read message, errno: %s\n", strerror(errno));
+        logger(LOG_ERROR, "Error while closing connection", true);
     }
     free(msg);
 
