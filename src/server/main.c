@@ -1,4 +1,4 @@
-#include "network.h"
+#include "serv.h"
 #include "logger.h"
 #include <pthread.h>
 
@@ -35,6 +35,7 @@ int main() {
         exit(1);
     }
 
+    logger(LOG_GOOD, "Server is up!", false);
     for (;;) {
         int connFd = EMPTY_FD;
         if (harvestConnection(sockFd, &connFd) != 0) {
@@ -51,6 +52,8 @@ int main() {
         } else if (authRet == 3) {
             logger(LOG_INFO, "Auth unsuccessfull", false);
         } if (authRet > 0) continue;
+
+        logger(LOG_GOOD, "New connection!", false);
 
         pthread_t thread; 
         MC_arg_t args = {.id = id, .conns = conns, .mutex = mutex};

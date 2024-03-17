@@ -1,7 +1,5 @@
 #include <time.h>
-
 #include "network.h"
-#include "../flags.h"
 
 /**
  * Creates a socket and tries to connect to a server.
@@ -49,9 +47,7 @@ int tryConnect(const char* ip, const int port, int* fd_ptr) {
  *         6 - invalid response from the server;
 */
 int auth(int fd, username_t username) {
-    if (write(fd, username, sizeof(username_t)) < 0) {
-        return 1;
-    }
+    if (write(fd, username, sizeof(username_t)) < 0) return 1;
 
     struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
     int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT * 1000);
@@ -59,15 +55,13 @@ int auth(int fd, username_t username) {
     if (pollRet < 0) return 1;
     if (pollRet == 0) return 2;
 
-    char code[4];
-    if (read(fd, &code, sizeof(hs_code_t)) < 0) {
-        return 1;
-    } 
+    char code[HS_CODE_SIZE];
+    if (read(fd, &code, HS_CODE_SIZE) != HS_CODE_SIZE) return 1;
     
-    if (*(int*)code == *(int*)HS_SUCC)              return 0;
-    else if (*(int*)code == *(int*)HS_MAX_CONN)     return 3;
-    else if (*(int*)code == *(int*)HS_INVAL_NAME)   return 4;
-    else if (*(int*)code == *(int*)HS_USER_EXISTS)  return 5;
+    if (strncmp(code, HS_SUCC, HS_CODE_SIZE) == 0)        return 0;
+    if (strncmp(code, HS_MAX_CONN, HS_CODE_SIZE) == 0)    return 3;
+    if (strncmp(code, HS_INVAL_NAME, HS_CODE_SIZE) == 0)  return 4;
+    if (strncmp(code, HS_USER_EXISTS, HS_CODE_SIZE) == 0) return 5;
 
     return 6;
 }
@@ -164,7 +158,7 @@ int readMsg(connection_t* c) {
         *(c->msg->names.to) == '\0' ||
         *(c->msg->names.from) == '\0' ||
         c->msg->timestamp == 0 ||
-        memcmp(c->msg->names.to, c->addr.from, sizeof(c->addr.from)) != 0) {
+        strncmp(c->msg->names.to, c->addr.from, sizeof(username_t))) {
             return 3;
     }
 

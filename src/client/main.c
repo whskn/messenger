@@ -72,7 +72,6 @@ int main() {
 void manageConn(connection_t* c) {
     // couple of shortcuts 
     char* buff = c->msg->buffer;
-    size_t buffSize = sizeof(c->msg->buffer);
 
     while (true) {
         // Blocking until message comes
@@ -85,7 +84,8 @@ void manageConn(connection_t* c) {
             printf("Failed to auth, errno: %s\n", strerror(errno));
         } else if (pollRet == 0) {
             printf("Timeout exceeded, no repond from the user...\n");
-        } if (pollRet <= 0) {
+        } 
+        if (pollRet <= 0) {
             sleep(1);
             continue;
         }
@@ -111,7 +111,7 @@ void manageConn(connection_t* c) {
 
         // outcoming message
         if (fds[1].revents) {
-            int readRet = read(fds[1].fd, buff, buffSize);
+            int readRet = read(fds[1].fd, buff, MAX_MESSAGE_LENGTH);
             if (readRet < 0) {
                 printf("Problem with read()...\n");
                 break;

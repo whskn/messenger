@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 
+#define CLR_GOOD "\033[0;32m"
 #define CLR_ERROR "\033[0;31m"
 #define CLR_WARNING "\033[0;33m"
 #define CLR_INFO "\033[0m"
@@ -34,6 +35,10 @@ void logger(const int tag, const char* message, const bool printErrno) {
     else if (tag == LOG_WARNING) {
         color = CLR_WARNING;
         badge = "WARN";
+    }
+    else if (tag == LOG_GOOD) {
+        color = CLR_GOOD;
+        badge = "GOOD";
     }
     else {
         color = CLR_INFO;

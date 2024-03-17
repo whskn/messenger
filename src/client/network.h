@@ -8,19 +8,16 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <stdbool.h>
+#include "../flags.h"
 
 #define CONNECTION_TIMEOUT 6000 // change
 #define CONN_RETRY 2
 #define AFK_TIMEOUT -1
 
-typedef int hs_code_t;
-
 #define MAX_MESSAGE_LENGTH 2048
 
 // sizeof(username_t) * 2 + sizeof(time_t) + sizeof(size_t) + sizeof(char) = 81
 #define MIN_MESSAGE_LEN 81
-
-typedef char username_t[32];
 
 typedef struct {
     username_t from;
