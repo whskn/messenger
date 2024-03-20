@@ -6,6 +6,11 @@
 #include <string.h>
 #include <errno.h>
 
+#define CLR_GOOD "\033[0;32m"
+#define CLR_RED "\033[0;31m"
+#define CLR_YELLOW "\033[0;33m"
+#define CLR_RESET "\033[0m"
+
 /**
  * Get username
  * 
@@ -73,4 +78,19 @@ int getInput(char* buffer, unsigned len, const char* out) {
 
 void print_error() {
     printf("\n\033[1;31mError:\033[0m %s\n", strerror(errno));
+}
+
+
+void printout_message(char* message, char* from, time_t timestamp) {
+    // formatting timestamp to human-readable date
+    char strTime[28];
+    struct tm* timeinfo = localtime(&timestamp);
+    sprintf(strTime, "%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min);
+
+    printf("%s %s[%s]:%s %s\n", 
+            strTime, 
+            CLR_GOOD,
+            from,
+            CLR_RESET,
+            message);
 }

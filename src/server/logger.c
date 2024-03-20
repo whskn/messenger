@@ -9,6 +9,7 @@
 #define CLR_ERROR "\033[0;31m"
 #define CLR_WARNING "\033[0;33m"
 #define CLR_INFO "\033[0m"
+#define CLR_RESET "\033[0m"
 
 /** Print out log message
  * 
@@ -25,7 +26,6 @@ void logger(const int tag, const char* message, const bool printErrno) {
             timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
     
     char* color;
-    char* resetClr = "\033[0m";
     char* badge;
     
     if (tag == LOG_ERROR) {
@@ -50,7 +50,7 @@ void logger(const int tag, const char* message, const bool printErrno) {
                 strTime, 
                 color,
                 badge,
-                resetClr,
+                CLR_RESET,
                 message,
                 strerror(errno));
     } else {
@@ -58,7 +58,7 @@ void logger(const int tag, const char* message, const bool printErrno) {
                 strTime, 
                 color,
                 badge,
-                resetClr,
+                CLR_RESET,
                 message);
     }
 }

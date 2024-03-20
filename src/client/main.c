@@ -40,16 +40,16 @@ int main() {
     // pulling message history
     int message_id = -1;
     int ret;
-    do {
+    while (true) {
         ret = history_read_next(DB_DIR, c.addr.to, (void*)c.msg, 
                                 sizeof(msg_t), &message_id);
         if (ret != 0) {
             printf("SQLITE error code: %d\n", ret);
             return 1;
         }
-        write(STDIN_FILENO, c.msg->buffer, c.msg->msg_size);
-        printf("\n");
-    } while (message_id != -1);
+        if (message_id == -1) break;
+        printout_message(c.msg->buffer, c.msg->names.from, c.msg->timestamp);
+    }
 
     // loop that re-tries to connect when conn breaks
     for (;;) {
@@ -130,13 +130,12 @@ void manageConn(connection_t* c) {
             int msg_size = msg->msg_size + sizeof(msg_t) - sizeof(msg->buffer);
             history_push(DB_DIR, c->addr.to, (void*)msg, msg_size);
 
-            write(STDIN_FILENO, buff, msg->msg_size);
-            printf("\n");
+            printout_message(buff, msg->names.from, msg->timestamp);
         } 
 
         // outcoming message
         if (fds[1].revents) {
-            int readRet = read(fds[1].fd, buff, MAX_MESSAGE_LENGTH);
+            int readRet = read(fds[1].fd, buff, MAX_MESSAGE_LENGTH - 1);
             if (readRet < 0) {
                 printf("Problem with read()...\n");
                 break;
@@ -148,13 +147,14 @@ void manageConn(connection_t* c) {
             }
 
             // cause of \n
-            if (buff[readRet - 1] == '\n') readRet--; 
+            if (buff[readRet - 1] == '\n') buff[readRet - 1] = '\0'; 
+            else buff[readRet] = '\0';
 
             if (sendMessage(c, buff, readRet) > 0) {
                 printf("Failed to send mgs, errno: %s\n", strerror(errno));
                 break;
             }
-            // INTERACTION THROUGH GLOBAL MSG STURCTURE FIXFIXFIX
+            // TEHDOLG: INTERACTION THROUGH GLOBAL MSG STURCTURE FIXFIXFIX
             int msg_size = msg->msg_size + sizeof(msg_t) - sizeof(msg->buffer);
             history_push(DB_DIR, c->addr.to, (void*)msg, msg_size);
         }
@@ -162,3 +162,5 @@ void manageConn(connection_t* c) {
 
     return;
 }
+
+// TEHDOLG: VALIDATE MESSAGE CHECKS
