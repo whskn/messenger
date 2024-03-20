@@ -7,10 +7,12 @@ all: client server
 
 
 # Client
-client: cli_main cli_network ui
+client: cli_main cli_network ui history sqlite3
 	$(CC) $(CFLAGS) -o $@ src/client/main.o \
 						  src/client/network.o \
-						  src/client/ui.o
+						  src/client/ui.o \
+						  src/history/sqlite/sqlite3.o \
+						  src/history/history.o
 	rm -f src/client/*.o
 
 cli_main: 
@@ -30,7 +32,7 @@ server: srv_main serv srv_network logger history sqlite3
 							  src/server/serv.o \
 							  src/server/logger.o \
 							  src/history/history.o \
-							  src/sqlite/sqlite3.o
+							  src/history/sqlite/sqlite3.o
 	rm -f src/server/*.o
 
 srv_main: 
@@ -47,14 +49,15 @@ logger:
 
 
 # Database 
-history: 
-	$(CC) $(CFLAGS) -c -o src/history/history.o src/history/history.c
+history:
+	$(CC) $(CFLAGS) -c -o src/history/history.o \
+						  src/history/history.c
 
-sqlite3: 
-	if [ ! -f src/sqlite/sqlite3.o ]; then \
-		$(CC) -g -c -o src/sqlite/sqlite3.o src/sqlite/sqlite3.c; \
-    fi
-
+sqlite3:
+	if [ ! -f src/history/sqlite/sqlite3.o ]; then \
+		$(CC) -g -c -o src/history/sqlite/sqlite3.o \
+					   src/history/sqlite/sqlite3.c; \
+	fi
 
 
 clean:

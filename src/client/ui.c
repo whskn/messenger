@@ -6,7 +6,6 @@
 #include <string.h>
 #include <errno.h>
 
-
 /**
  * Get username
  * 
@@ -19,9 +18,8 @@
  *         3 - inputed name is too long;
  *         4 - invalid name, only 0-9, A-Z, a-z;
 */
-int get_username(username_t buffer, const char* out) {
-    username_t tempBuffer;
-    bzero(tempBuffer, sizeof(tempBuffer));
+int getInput(char* buffer, unsigned len, const char* out) {
+    char* tempBuffer = (char*)calloc(len, sizeof(char));
 
     system("clear");
     printf(out);
@@ -32,16 +30,25 @@ int get_username(username_t buffer, const char* out) {
     if ((poll(&fds, (nfds_t)1, -1)) < 0) {
         // TEHDOLG: error handling
         printf("polling failed...\n"); 
+        free(tempBuffer);
         return -1;
     }
 
-    ssize_t bytesRead = read(STDIN_FILENO, tempBuffer, sizeof(username_t));
-    if (bytesRead < 0) return 1;
-    if (bytesRead == 0) return 2;
+    ssize_t bytesRead = read(STDIN_FILENO, tempBuffer, len);
+    if (bytesRead < 0) {
+        free(tempBuffer);
+        return 1;
+    } if (bytesRead == 0) {
+        free(tempBuffer);
+        return 2;
+    }
 
     unsigned short lastChar = bytesRead - 1;
     if (tempBuffer[lastChar] != '\n' && tempBuffer[lastChar] != '\0') {
-        if (bytesRead == sizeof(tempBuffer)) return 3;
+        if (bytesRead == sizeof(tempBuffer)) {
+            free(tempBuffer);
+            return 3;
+        }
     } else {
         tempBuffer[lastChar] = '\0'; // replace possible \n with \0
     }
@@ -52,13 +59,14 @@ int get_username(username_t buffer, const char* out) {
             (tempBuffer[i] >= 97 && tempBuffer[i] <= 122)) { // letters
                 continue;
             }
+        free(tempBuffer);
         return 4;
     }
 
-    memcpy(buffer, tempBuffer, sizeof(username_t));
+    memcpy(buffer, tempBuffer, len);
     
     system("clear");
-
+    free(tempBuffer);
     return 0;
 }
 

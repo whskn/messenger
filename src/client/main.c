@@ -1,8 +1,11 @@
 #include "network.h"
 #include "ui.h"
+#include "../history/history.h"
+
 #include <pthread.h>
 #include <errno.h>
 
+#define DB_DIR "client_chats/"
 #define IP "127.0.0.1"
 #define PORT 6969
 
@@ -29,8 +32,24 @@ int main() {
     c.msg = (msg_t*)calloc(1, sizeof(msg_t));
 
     // saving the username and the reciever
-    while (get_username(c.addr.from, "ENTER YOUR USERNAME: ") != 0);
-    while (get_username(c.addr.to, "WHO WOULD YOU LIKE TO CHAT WITH: ") != 0);
+    while (getInput(c.addr.from, sizeof(username_t), 
+           "ENTER YOUR USERNAME: ") != 0);
+    while (getInput(c.addr.to, sizeof(username_t), 
+           "WHO WOULD YOU LIKE TO CHAT WITH: ") != 0);
+
+    // pulling message history
+    int message_id = -1;
+    int ret;
+    do {
+        ret = history_read_next(DB_DIR, c.addr.to, (void*)c.msg, 
+                                sizeof(msg_t), &message_id);
+        if (ret != 0) {
+            printf("SQLITE error code: %d\n", ret);
+            return 1;
+        }
+        write(STDIN_FILENO, c.msg->buffer, c.msg->msg_size);
+        printf("\n");
+    } while (message_id != -1);
 
     // loop that re-tries to connect when conn breaks
     for (;;) {
@@ -64,6 +83,8 @@ int main() {
 }
 
 
+
+
 /**
  * Recieves and sends messages
  * 
@@ -71,7 +92,8 @@ int main() {
 */
 void manageConn(connection_t* c) {
     // couple of shortcuts 
-    char* buff = c->msg->buffer;
+    msg_t* msg = c->msg;
+    char* buff = msg->buffer;
 
     while (true) {
         // Blocking until message comes
@@ -84,7 +106,7 @@ void manageConn(connection_t* c) {
             printf("Failed to auth, errno: %s\n", strerror(errno));
         } else if (pollRet == 0) {
             printf("Timeout exceeded, no repond from the user...\n");
-        } 
+        }
         if (pollRet <= 0) {
             sleep(1);
             continue;
@@ -100,12 +122,15 @@ void manageConn(connection_t* c) {
             } else if (readRet == 2) {
                 printf("Connection broke...\n");
                 break;
-            } else if (readRet == 2) {
+            } else if (readRet == 3) {
                 printf("Recieved an invalid message...\n");
                 continue;
             }
+            
+            int msg_size = msg->msg_size + sizeof(msg_t) - sizeof(msg->buffer);
+            history_push(DB_DIR, c->addr.to, (void*)msg, msg_size);
 
-            write(STDIN_FILENO, buff, c->msg->msg_size);
+            write(STDIN_FILENO, buff, msg->msg_size);
             printf("\n");
         } 
 
@@ -118,7 +143,7 @@ void manageConn(connection_t* c) {
             } else if (readRet == 0) {
                 printf("EOF...\n");
                 continue;
-            } else if (c->msg->buffer[0] == '\0') {
+            } else if (msg->buffer[0] == '\0') {
                 continue;
             }
 
@@ -129,6 +154,9 @@ void manageConn(connection_t* c) {
                 printf("Failed to send mgs, errno: %s\n", strerror(errno));
                 break;
             }
+            // INTERACTION THROUGH GLOBAL MSG STURCTURE FIXFIXFIX
+            int msg_size = msg->msg_size + sizeof(msg_t) - sizeof(msg->buffer);
+            history_push(DB_DIR, c->addr.to, (void*)msg, msg_size);
         }
     }
 
