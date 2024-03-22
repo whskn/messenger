@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include "../flags.h"
 #include "../message.h"
 
@@ -24,3 +25,4 @@ extern int sendMessage(connection_t* c, msg_t* msg);
 extern int readMsg(connection_t* c, msg_t* msg);
 extern int clientConnect(connection_t* c, const char* ip, const int port);
 extern int closeConn(connection_t* c);
+bool message_is_valid(msg_t* msg, const int size);

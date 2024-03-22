@@ -38,7 +38,9 @@ int main() {
     while (getInput(c.addr.to, sizeof(username_t), 
            "WHO WOULD YOU LIKE TO CHAT WITH: ") != 0);
 
-    printout_history(c.addr.to);
+    if (printout_history(c.addr.to) < 0) {
+        printf("Failed to get message history with this user\n");
+    }
 
     // loop that re-tries to connect when conn breaks
     while (true) {

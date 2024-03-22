@@ -21,14 +21,19 @@ int printout_history(username_t username) {
     while (true) {
         ret = history_read_next(DB_DIR, username, (void*)msg, 
                                 sizeof(msg_t), &message_id);
-        if (ret != 0) {
-            printf("SQLITE error code: %d\n", ret);
+        if (ret == HST_ERROR) {
             free(msg);
-            return 1;
+            return -1;
         }
         if (message_id == -1) {
             break;
         }
+
+        if (!message_is_valid(msg, ret)) {
+            printf("Invalid msg pulled from database\n");
+            continue;
+        } 
+
         printout_message(msg->buffer, msg->names.from, msg->timestamp);
     }
     free(msg);
@@ -79,7 +84,10 @@ void manageConn(connection_t* c, msg_t* msg) {
             }
             
             int text_size = msg->text_size + sizeof(msg_t) - sizeof(msg->buffer);
-            history_push(DB_DIR, c->addr.to, (void*)msg, text_size);
+            ret = history_push(DB_DIR, c->addr.to, (void*)msg, text_size);
+            if (ret != HST_SUCCESS) {
+                printf("Failed to save message in database\n");
+            }
             printout_message(buff, msg->names.from, msg->timestamp);
         } 
 
@@ -111,7 +119,10 @@ void manageConn(connection_t* c, msg_t* msg) {
             } 
 
             int sent_bytes = ret;
-            history_push(DB_DIR, c->addr.to, (void*)msg, sent_bytes);
+            ret = history_push(DB_DIR, c->addr.to, (void*)msg, sent_bytes);
+            if (ret != HST_SUCCESS) {
+                printf("Failed to save message in database\n");
+            }
         }
     }
 

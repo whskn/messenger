@@ -54,6 +54,7 @@ int del_row(sqlite3* db, int id) {
     return ret;
 }
 
+
 /**
  * Reads blob from a db
  * 
@@ -61,10 +62,12 @@ int del_row(sqlite3* db, int id) {
  * @param id id of the row to read blob form
  * @param data where to put readed data into
  * @param size size of data, a reading limit
+ * @param save_size_to where to put size of readed blob, or just NULL
  * 
- * @return sqlite error code otherwise.
+ * @return sqlite error code
 */
-int read_blob(sqlite3* db, int id, void* data, const unsigned size) {
+int read_blob(sqlite3* db, int id, void* data, const unsigned size, 
+              int* save_size_to) {
     sqlite3_blob* blob;
     unsigned blob_size;
     unsigned read_size;
@@ -80,6 +83,10 @@ int read_blob(sqlite3* db, int id, void* data, const unsigned size) {
     blob_size = sqlite3_blob_bytes(blob);
     read_size = (blob_size < size) ? blob_size : size;
     ret = sqlite3_blob_read(blob, data, read_size, 0);
+
+    if (save_size_to != NULL) {
+        *save_size_to = read_size;
+    }
 
     sqlite3_blob_close(blob);
     return ret;
@@ -118,7 +125,7 @@ int create_table(sqlite3* db) {
  * @param name name of the database file without an extension
  * @param db where to store a pointer to the db
  * 
- * @return 0 on success, sqlite error code otherwise;
+ * @return sqlite error code otherwise;
 */
 int get_db(char* filename, sqlite3** db) {
     int ret;
@@ -141,8 +148,36 @@ int get_db(char* filename, sqlite3** db) {
  * Closes database
  * 
  * @param db opened database itself
- * @return 0 - success, sqlite error code otherwise.
+ * @return sqlite error code otherwise.
 */
 int close_db(sqlite3* db) {
     return sqlite3_close_v2(db);
+}
+
+
+/**
+ * This function concatinates dir, filename and extension strings and 
+ * returns a pointer to the string. Returns NULL if allocation failed.
+ * 
+ * Calling thread must free() memory.
+*/
+char* build_filename(char* dir, char* filename, const char* extension) {
+    unsigned size = (dir != NULL) ? strlen(dir) : 0 + 
+                    strlen(filename) + 
+                    strlen(extension) + 1; // +1 for \0 byte 
+
+    char* buffer = (char*)malloc(size);
+    if (buffer == NULL) {
+        return NULL;
+    }
+
+    buffer[0] = '\0'; // so strcat will work like strcpy
+
+    if (dir != NULL) {
+        strcat(buffer, dir);
+    }
+    strcat(buffer, filename);
+    strcat(buffer, extension);
+
+    return buffer;
 }

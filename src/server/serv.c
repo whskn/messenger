@@ -10,6 +10,16 @@
 
 #define DB_DIR "server_chats/"
 
+#define HANDLE_SEND_ERROR(ret) \
+    if (ret == NET_CHECK_ERRNO) { \
+        logger(LOG_ERROR, "Failed to send message to user", false); \
+        break; \
+    } \
+    if (ret == NET_CONN_BROKE) { \
+        logger(LOG_INFO, "Connection broke", false); \
+        break; \
+    }
+
 /**
  * Blocks current thread until new connection comes. Than auths new user
  * and returns id of the new connection. 
@@ -70,14 +80,15 @@ int flush_pending(char* username, int fd) {
     msg_t* msg = (msg_t*)calloc(1, sizeof(msg_t));
     int ret;
 
+    // LOCK DATABASE
     while (true) {
-        ret = history_pull(DB_DIR, username, (void*)msg, sizeof(msg_t)); // must return size
-        if (ret == 4) { // AAAAwAWWWAWwaWaAAWWAWAWAAAAAwAWWWAWwaWaAAWWAWAWAAAAAw
+        ret = history_pull(DB_DIR, username, (void*)msg, sizeof(msg_t));
+        if (ret == HST_TABLE_EMPTY) {
             break;
-        } else if (ret != 0) {
-            printf("SQLITE error code: %d\n", ret);
-            free(msg);
-            return NET_CHECK_ERRNO;
+        } 
+        if (ret == HST_ERROR) {
+            logger(LOG_WARNING, "Failed to pull message from database", false);
+            break;
         }
         int msg_size = ret;
 
@@ -88,15 +99,9 @@ int flush_pending(char* username, int fd) {
         } 
 
         ret = sendMessage(fd, msg);
-        if (ret == NET_CHECK_ERRNO) {
-            logger(LOG_ERROR, "Failed to push message to user's queue", false);
-            break;
-        } 
-        if (ret == NET_CONN_BROKE) {
-            logger(LOG_INFO, "Connection broke", false);
-            break;
-        }
+        HANDLE_SEND_ERROR(ret);
     }
+    // UNLOCK DATABASE
 
     free(msg);
     return NET_SUCCESS;
@@ -150,30 +155,25 @@ void* manageConnection(void* void_args) {
         // sending the message
         if (toFd > -1) {
             ret = sendMessage(toFd, msg);
-            if (ret == NET_CHECK_ERRNO) {
-                logger(LOG_ERROR, "Failed to push message to user's queue", 
-                       false);
-                break;
-            } 
-            if (ret == NET_CONN_BROKE) {
-                logger(LOG_INFO, "Connection broke", false);
-                break;
-            }
+            HANDLE_SEND_ERROR(ret);
         } 
         else {
-            const int size = msg->text_size - sizeof(msg->buffer) + sizeof(*msg);
+            const int size = msg->text_size - 
+                             sizeof(msg->buffer) + 
+                             sizeof(*msg);
             ret = history_push(DB_DIR, msg->names.to, (void*)msg, size);
-            if (ret != 0) {
+            if (ret != HST_SUCCESS) {
                 logger(LOG_ERROR, "Failed to push message to user's queue", 
                        false);
             }
         }
     }
 
-    if (closeConnection(&conns[id], mutex) != 0) {
+    ret = closeConnection(&conns[id], mutex);
+    if (ret != NET_SUCCESS) {
         logger(LOG_ERROR, "Error while closing connection", true);
     }
-    free(msg);
 
+    free(msg);
     return NULL;
 }
