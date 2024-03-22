@@ -1,5 +1,18 @@
 #include <time.h>
+#include <stdbool.h>
+#include <poll.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #include "network.h"
+#include "../misc/blocking_read.h"
+
 
 /**
  * Creates a socket and tries to connect to a server.
@@ -7,14 +20,14 @@
  * @param ip ip address of the server
  * @param port port of the server
  * 
- * @return 0 - success, 1 - check errno.
+ * @return connection file descriptor or error code
 */
-int tryConnect(const char* ip, const int port, int* fd_ptr) {
+int tryConnect(const char* ip, const int port) {
     struct sockaddr_in address;
-    int fd;
-    
-    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        return 1;
+
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) {
+        return NET_CHECK_ERRNO;
     }
 
     bzero(&address, sizeof(address)); 
@@ -22,14 +35,13 @@ int tryConnect(const char* ip, const int port, int* fd_ptr) {
     address.sin_port = htons(port);
     inet_pton(AF_INET, ip, &address.sin_addr);
     
-    if (connect(fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
+    int err = connect(fd, (struct sockaddr*)&address, sizeof(address));
+    if (err < 0) {
         close(fd);
-        return 1;
+        return NET_CHECK_ERRNO;
     } 
 
-    *fd_ptr = fd;
-
-    return 0;
+    return fd;
 }
 
 /**
@@ -38,43 +50,35 @@ int tryConnect(const char* ip, const int port, int* fd_ptr) {
  * @param fd file descriptor of the tcp connection
  * @param username user's nickname
  * 
- * @return 0 - success;
- *         1 - check errno;
- *         2 - timeout exceeded;
- *         3 - max number of connections, try again later;
- *         4 - invalid name;
- *         5 - user with such name already exists;
- *         6 - invalid response from the server;
+ * @return error codes
 */
 int auth(int fd, username_t username) {
-    if (write(fd, username, sizeof(username_t)) < 0) return 1;
-
-    struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
-    int pollRet = poll(&fds, (nfds_t)1, CONNECTION_TIMEOUT * 1000);
-
-    if (pollRet < 0) return 1;
-    if (pollRet == 0) return 2;
-
+    int err;
     char code[HS_CODE_SIZE];
-    if (read(fd, &code, HS_CODE_SIZE) != HS_CODE_SIZE) return 1;
+
+    err = write(fd, username, sizeof(username_t));
+    if (err < 0) {
+        return NET_CHECK_ERRNO;
+    }
+
+    err = blocking_read(fd, code, HS_CODE_SIZE, CONNECTION_TIMEOUT * 1000);
+    if (err == BR_TIMEOUT) {
+        return NET_SERVER_ERROR;
+    }
+    if (err == BR_CHECK_ERRNO) {
+        return NET_CHECK_ERRNO;
+    }
+    if (err == BR_EOF) {
+        return NET_CONN_DOWN;
+    }
     
-    if (strncmp(code, HS_SUCC, HS_CODE_SIZE) == 0)        return 0;
-    if (strncmp(code, HS_MAX_CONN, HS_CODE_SIZE) == 0)    return 3;
-    if (strncmp(code, HS_INVAL_NAME, HS_CODE_SIZE) == 0)  return 4;
-    if (strncmp(code, HS_USER_EXISTS, HS_CODE_SIZE) == 0) return 5;
+    // strcmp() returns 0 if strings are the same
+    if (!strncmp(code, HS_SUCC, HS_CODE_SIZE))        return NET_SUCCESS          ;
+    if (!strncmp(code, HS_INVAL_NAME, HS_CODE_SIZE))  return NET_INVALID_NAME     ;
+    if (!strncmp(code, HS_USER_EXISTS, HS_CODE_SIZE)) return NET_USER_EXISTS      ;
+    if (!strncmp(code, HS_MAX_CONN, HS_CODE_SIZE))    return NET_SERVER_OVERLOADED;
 
-    return 6;
-}
-
-/**
- * Closes connection with a server
- * 
- * @param c the connection to close
- * @return 0 - success, 1 - syscall failed, check errno
-*/
-int closeConn(connection_t* c) {
-    if (close(c->fd) < 0) return 1;
-    return 0;
+    return NET_SERVER_ERROR;
 }
 
 /**
@@ -84,27 +88,83 @@ int closeConn(connection_t* c) {
  * @param ip ip of the server to connect to
  * @param port port of the server to connect to
  * 
- * @return 0 - success;
- *         1 - check errno;
- *         2 - timeout exceeded;
- *         3 - max number of connections, try again later;
- *         4 - invalid name;
- *         5 - user with such name already exists; 
- *         6 - invalid response from the server
+ * @return error codes
 */
 int clientConnect(connection_t* c, const char* ip, const int port) {
-    int tempFd;
+    int fd, ret;
 
-    if (tryConnect(ip, port, &tempFd) != 0) return 1;
+    fd = tryConnect(ip, port);
+    if (fd < 0) {
+        return NET_CHECK_ERRNO;
+    }
 
-    int ret = auth(tempFd, c->addr.from);
-
-    if (ret != 0) close(tempFd);
-    else c->fd = tempFd;
+    ret = auth(fd, c->addr.from);
+    if (ret == 0) {
+        c->fd = fd;
+    } 
+    else {
+        close(fd);
+    }
 
     return ret;
 }
 
+/**
+ * Closes connection with a server
+ * 
+ * @param c the connection to close
+ * @return error codes
+*/
+int closeConn(connection_t* c) {
+    return close(c->fd);
+}
+
+/**
+ * My strnlen implementation, since the one from string.h is somehow not 
+ * avaliable.
+*/
+size_t strnlen(const char* s, size_t len) {
+    size_t i = 0;
+    for (; i < len && s[i] != '\0'; ++i);
+    return i;
+}
+
+/**
+ * Checks message for validity.
+ * @param size of msg excluding unused bytes in buffer
+ * @param msg where the message is stored
+ * 
+ * @return weather the message valid or not
+*/
+bool message_is_valid(msg_t* msg, const int size) {
+    int message_len = strnlen(msg->buffer, MAX_MESSAGE_SIZE);
+    int from_len = strnlen(msg->names.from, sizeof(username_t));
+    int to_len   = strnlen(msg->names.to,   sizeof(username_t));
+
+    // negative checks
+    if (size < MIN_MSG_SIZE || 
+        size != (int)(msg->text_size + sizeof(msg_t) - sizeof(msg->buffer)) ||
+        
+        message_len == MAX_MESSAGE_SIZE ||
+        // Last char of the message must always be \0. 
+        // In this case message length == MAX_MESSAGE_SIZE, 
+        // that leaves no place for \0.
+        
+        message_len < 1 ||
+        msg->text_size < 2 ||
+        // message len doesn't include \0, but text_size does
+
+        from_len < 1 ||
+        from_len > (int)sizeof(username_t) - 1 ||
+        to_len < 1 ||
+        to_len > (int)sizeof(username_t) - 1 ||
+        // names are also C-strings, last char must be \0
+
+        msg->timestamp == 0) {
+            return false;
+    } 
+    return true;
+}
 
 /**
  * Send message from the buffer. Buffer can point to buffer of msg of connection
@@ -114,23 +174,23 @@ int clientConnect(connection_t* c, const char* ip, const int port) {
  * @param buffer message's buffer (better be pointed at c->msg->buffer)
  * @param length length of the message in buffer
  * 
- * @return 0 - success;
- *         1 - check errno, system call failed;
+ * @return size of message sent on success, error code otherwise
 */
-int sendMessage(connection_t* c, char* buffer, size_t length) {
-    memcpy(&(c->msg->names), &(c->addr), sizeof(c->addr));
-    if (buffer != c->msg->buffer) {
-        memcpy(c->msg->buffer, buffer, length);
+int sendMessage(connection_t* c, msg_t* msg) {
+    msg->text_size = strnlen(msg->buffer, MAX_MESSAGE_SIZE) + 1; // for \0
+    msg->timestamp = time(NULL);
+    memcpy(&(msg->names), &(c->addr), sizeof(c->addr));
+    int msg_size = msg->text_size + sizeof(msg_t) - sizeof(msg->buffer);
+    if (!message_is_valid(msg, msg_size)) {
+        return NET_INVAL_MSG_FORMAT;
     }
-    c->msg->timestamp = time(NULL);
-    c->msg->msg_size = length;
 
-    size_t sizeof_msg = sizeof(*c->msg);
-    ssize_t packet_size = c->msg->msg_size + sizeof_msg - sizeof(c->msg->buffer);
+    int err = write(c->fd, msg, msg_size);
+    if (err < 0) {
+        return NET_CHECK_ERRNO;
+    }
 
-    if (write(c->fd, c->msg, packet_size) < 0) return 1;
-
-    return 0;
+    return msg_size;
 }
 
 /**
@@ -138,29 +198,21 @@ int sendMessage(connection_t* c, char* buffer, size_t length) {
  * 
  * @param fd file descriptor of the connection with a server.
  * @param msg message buffer to write message in.
- * @param me ...
  * 
- * @return 0 - success;
- *         1 - read error, check errno;
- *         2 - EOF, connection broke;
- *         3 - recieved an invalid message; 
+ * @return size of read message or an error code
 */
-int readMsg(connection_t* c) {
-    size_t sizeof_msg = sizeof(*c->msg);
-
-    ssize_t ret = read(c->fd, c->msg, sizeof_msg);
-    if (ret < 0) return 1;
-    else if (ret == 0) return 2;
-
-    if (ret < MIN_MESSAGE_LEN || 
-        (size_t)ret != (c->msg->msg_size + sizeof_msg - sizeof(c->msg->buffer)) ||
-        c->msg->msg_size < 1 ||
-        *(c->msg->names.to) == '\0' ||
-        *(c->msg->names.from) == '\0' ||
-        c->msg->timestamp == 0 ||
-        strncmp(c->msg->names.to, c->addr.from, sizeof(username_t))) {
-            return 3;
+int readMsg(connection_t* c, msg_t* msg) {
+    int ret = read(c->fd, msg, sizeof(msg_t));
+    if (ret < 0) {
+        return NET_CHECK_ERRNO;
+    }
+    if (ret == 0) {
+        return NET_CONN_DOWN;
     }
 
-    return 0;
+    if (!message_is_valid(msg, ret)) {
+        return NET_INVAL_MSG_FORMAT;
+    }
+
+    return ret;
 }

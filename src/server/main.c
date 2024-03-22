@@ -1,6 +1,12 @@
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
+
 #include "serv.h"
 #include "logger.h"
-#include <pthread.h>
 
 #define PORT 6969
 
@@ -23,7 +29,7 @@ int main() {
     
     //opening socket
     int sockFd;
-    if (openMainSocket(port, &sockFd) != 0) {
+    if (openMainSocket(port, &sockFd) != NET_SUCCESS) {
         logger(LOG_ERROR, "Problem opening socket", true);
         exit(1);
     }
@@ -37,21 +43,15 @@ int main() {
 
     logger(LOG_GOOD, "Server is up!", false);
     for (;;) {
-        int connFd = EMPTY_FD;
-        if (harvestConnection(sockFd, &connFd) != 0) {
-            logger(LOG_WARNING, "Error while accepting a connection", true);
+        int id = get_conn(sockFd, conns, mutex);
+        if (id == NET_CHECK_ERRNO) {
+            logger(LOG_ERROR, "Failed to harvest new connection", true);
             continue;
-        }
-
-        int id = 3;
-        int authRet = authUser(connFd, &id, conns, mutex);
-        if (authRet == 1) {
-            logger(LOG_WARNING, "Failed to auth user", true);
-        } else if (authRet == 2) {
-            logger(LOG_INFO, "No response from the user", false);
-        } else if (authRet == 3) {
-            logger(LOG_INFO, "Auth unsuccessfull", false);
-        } if (authRet > 0) continue;
+        } 
+        else if (id == NET_AUTH_FAIL) {
+            logger(LOG_ERROR, "Failed to establish connection", true);
+            continue;
+        } 
 
         logger(LOG_GOOD, "New connection!", false);
 

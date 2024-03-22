@@ -1,10 +1,12 @@
-#include "ui.h"
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <poll.h>
 #include <string.h>
 #include <errno.h>
+
+#include "../misc/blocking_read.h"
+#include "ui.h"
 
 #define CLR_GOOD "\033[0;32m"
 #define CLR_RED "\033[0;31m"
@@ -30,22 +32,9 @@ int getInput(char* buffer, unsigned len, const char* out) {
     printf(out);
     fflush(stdout); // Force output
 
-    struct pollfd fds = {.fd = STDIN_FILENO, .events = POLLIN, .revents = 0};
-
-    if ((poll(&fds, (nfds_t)1, -1)) < 0) {
-        // TEHDOLG: error handling
-        printf("polling failed...\n"); 
-        free(tempBuffer);
-        return -1;
-    }
-
-    ssize_t bytesRead = read(STDIN_FILENO, tempBuffer, len);
+    int bytesRead = blocking_read(STDIN_FILENO, tempBuffer, len, -1);
     if (bytesRead < 0) {
-        free(tempBuffer);
         return 1;
-    } if (bytesRead == 0) {
-        free(tempBuffer);
-        return 2;
     }
 
     unsigned short lastChar = bytesRead - 1;

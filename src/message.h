@@ -1,9 +1,18 @@
 #include <time.h>
 
-#define MAX_MESSAGE_LENGTH 2048
+// Max size of message buffer including \0
+#define MAX_MESSAGE_SIZE 2048
 
-// sizeof(username_t) * 2 + sizeof(time_t) + sizeof(size_t) + sizeof(char) = 81
-#define MIN_MESSAGE_LEN 81
+/*
+Min size of a valid msg_t structure. The real size of msg_t 
+structure with a two-byte message in the buffer might 
+be different due to paddings compiler make. 
+*/
+#define MIN_MSG_SIZE (int)(sizeof(username_t) * 2 + \
+                           sizeof(time_t) + \
+                           sizeof(int) + \
+                           sizeof(char) * 2)
+
 
 typedef char username_t[32];
 
@@ -15,6 +24,6 @@ typedef struct {
 typedef struct {
     fromto_t names;
     time_t timestamp;
-    size_t msg_size;
-    char buffer[MAX_MESSAGE_LENGTH];
+    int text_size;
+    char buffer[MAX_MESSAGE_SIZE];
 } msg_t;
