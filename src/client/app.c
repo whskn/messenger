@@ -9,6 +9,7 @@
 #include "ui.h"
 #include "app.h"
 #include "../history/history.h"
+#include "../misc/validate.h"
 
 #define DB_DIR "client_chats/"
 
@@ -29,7 +30,7 @@ int printout_history(username_t username) {
             break;
         }
 
-        if (!message_is_valid(msg, ret)) {
+        if (!msg_is_valid((void*)msg, ret)) {
             printf("Invalid msg pulled from database\n");
             continue;
         } 

@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 
 #include "network.h"
+#include "../misc/validate.h"
 #include "../misc/blocking_read.h"
 
 
@@ -129,42 +130,6 @@ size_t strnlen(const char* s, size_t len) {
     return i;
 }
 
-/**
- * Checks message for validity.
- * @param size of msg excluding unused bytes in buffer
- * @param msg where the message is stored
- * 
- * @return weather the message valid or not
-*/
-bool message_is_valid(msg_t* msg, const int size) {
-    int message_len = strnlen(msg->buffer, MAX_MESSAGE_SIZE);
-    int from_len = strnlen(msg->names.from, sizeof(username_t));
-    int to_len   = strnlen(msg->names.to,   sizeof(username_t));
-
-    // negative checks
-    if (size < MIN_MSG_SIZE || 
-        size != (int)(msg->text_size + sizeof(msg_t) - sizeof(msg->buffer)) ||
-        
-        message_len == MAX_MESSAGE_SIZE ||
-        // Last char of the message must always be \0. 
-        // In this case message length == MAX_MESSAGE_SIZE, 
-        // that leaves no place for \0.
-        
-        message_len < 1 ||
-        msg->text_size < 2 ||
-        // message len doesn't include \0, but text_size does
-
-        from_len < 1 ||
-        from_len > (int)sizeof(username_t) - 1 ||
-        to_len < 1 ||
-        to_len > (int)sizeof(username_t) - 1 ||
-        // names are also C-strings, last char must be \0
-
-        msg->timestamp == 0) {
-            return false;
-    } 
-    return true;
-}
 
 /**
  * Send message from the buffer. Buffer can point to buffer of msg of connection
@@ -181,7 +146,7 @@ int sendMessage(connection_t* c, msg_t* msg) {
     msg->timestamp = time(NULL);
     memcpy(&(msg->names), &(c->addr), sizeof(c->addr));
     int msg_size = msg->text_size + sizeof(msg_t) - sizeof(msg->buffer);
-    if (!message_is_valid(msg, msg_size)) {
+    if (!msg_is_valid((void*)msg, msg_size)) {
         return NET_INVAL_MSG_FORMAT;
     }
 
@@ -210,7 +175,7 @@ int readMsg(connection_t* c, msg_t* msg) {
         return NET_CONN_DOWN;
     }
 
-    if (!message_is_valid(msg, ret)) {
+    if (!msg_is_valid((void*)msg, ret)) {
         return NET_INVAL_MSG_FORMAT;
     }
 

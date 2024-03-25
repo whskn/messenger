@@ -15,7 +15,8 @@ client: sqlite_funcs cli_main cli_network ui app
 						  src/history/sqlite/sqlite3.o \
 						  src/history/history.o \
 						  src/history/sqlite_funcs.o \
-						  src/misc/blocking_read.o
+						  src/misc/blocking_read.o \
+						  src/misc/validate.o
 	rm -f src/client/*.o
 
 cli_main: 
@@ -40,7 +41,8 @@ server: srv_main serv srv_network logger
 							  src/history/history.o \
 							  src/history/sqlite/sqlite3.o \
 							  src/history/sqlite_funcs.o \
-							  src/misc/blocking_read.o
+							  src/misc/blocking_read.o \
+							  src/misc/validate.o
 	rm -f src/server/*.o
 
 srv_main: 
@@ -73,6 +75,7 @@ sqlite3:
 # misc
 misc:
 	$(CC) $(CFLAGS) -c -o src/misc/blocking_read.o src/misc/blocking_read.c
+	$(CC) $(CFLAGS) -c -o src/misc/validate.o src/misc/validate.c
 
 
 clean:

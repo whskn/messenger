@@ -33,4 +33,3 @@ extern int sendMessage(int fd, msg_t* msg);
 extern int authUser(int fd, conn_t* conns, sem_t* mutex);
 extern int openMainSocket(const int port, int* fd);
 extern int closeConnection(conn_t* conn, sem_t* mutex);
-extern bool message_is_valid(msg_t* msg, const int size);

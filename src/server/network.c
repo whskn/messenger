@@ -197,50 +197,7 @@ int closeConnection(conn_t* conn, sem_t* mutex) {
 
 
 /**
- * Checks message for validity.
- * @param size of msg excluding unused bytes in buffer
- * @param msg where the message is stored
- * 
- * @return weather the message valid or not
-*/
-bool message_is_valid(msg_t* msg, const int size) {
-    int message_len = strnlen(msg->buffer, MAX_MESSAGE_SIZE);
-    int from_len = strnlen(msg->names.from, sizeof(username_t));
-    int to_len   = strnlen(msg->names.to,   sizeof(username_t));
-
-    // negative checks
-    if (size < MIN_MSG_SIZE || 
-        size != (int)(msg->text_size + sizeof(msg_t) - sizeof(msg->buffer)) ||
-        
-        message_len == MAX_MESSAGE_SIZE ||
-        // Last char of the message must always be \0. 
-        // In this case message length == MAX_MESSAGE_SIZE, 
-        // that leaves no place for \0.
-        
-        message_len < 1 ||
-        msg->text_size < 2 ||
-        // message len doesn't include \0, but text_size does
-
-        from_len < 1 ||
-        from_len > (int)sizeof(username_t) - 1 ||
-        to_len < 1 ||
-        to_len > (int)sizeof(username_t) - 1 ||
-        // names are also C-strings, last char must be \0
-
-        msg->timestamp == 0) {
-            return false;
-    } 
-
-    // checking username of the reciever for validity
-    if (!username_is_valid(msg->names.to)) {
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * Send message to a user. Message must be checked with message_is_valid()
+ * Send message to a user. Message must be checked with msg_is_valid()
  * before calling this function.
  * 
  * @param fd file descriptor of the connection with the user

@@ -3,9 +3,11 @@
 #include <stdlib.h>
 
 #include "serv.h"
+
 #include "logger.h"
 #include "../history/history.h"
 #include "../misc/blocking_read.h"
+#include "../misc/validate.h"
 
 
 #define DB_DIR "server_chats/"
@@ -93,7 +95,7 @@ int flush_pending(char* username, int fd) {
         int msg_size = ret;
 
         // checking msg for validity
-        if (!message_is_valid(msg, msg_size)) {
+        if (!msg_is_valid((void*)msg, msg_size)) {
             logger(LOG_WARNING, "Invalid msg pulled from database", false);
             continue;
         } 
@@ -144,7 +146,7 @@ void* manageConnection(void* void_args) {
         int msg_size = ret;
 
         // checking if recieved message is valid
-        if (!message_is_valid(msg, msg_size)) {
+        if (!msg_is_valid((void*)msg, msg_size)) {
             logger(LOG_WARNING, "Invalid msg recieved", false);
             continue;
         } 
