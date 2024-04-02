@@ -70,3 +70,5 @@ int main() {
 
     return 0;
 }
+
+// TEHDOLG: WAIT FOR THREADS!!!

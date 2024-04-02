@@ -6,8 +6,6 @@
 #include "sqlite_funcs.h"
 
 
-#define EXTENSION ".db"
-
 #define GET_DB(db, dir, name, extension)                  \
     char* filename = build_filename(dir, name, EXTENSION); \
     if (filename == NULL) return HST_ERROR;                 \
@@ -53,7 +51,7 @@
  * 
  * @return error codes
 */
-int history_push(char* dir, char* name, void* data, const unsigned size) {
+int history_push(char* dir, char* name, void* data, const int size) {
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
     int ret;
@@ -85,7 +83,7 @@ int history_push(char* dir, char* name, void* data, const unsigned size) {
  * 
  * @return size or readed blob or error codes, see history.h
 */
-int history_pull(char* dir, char* name, void* data, const unsigned size) {
+int history_pull(char* dir, char* name, void* data, const int size) {
     sqlite3* db = NULL;
     int id;
     int ret;
@@ -128,7 +126,7 @@ int history_pull(char* dir, char* name, void* data, const unsigned size) {
 int history_read_next(char* dir, 
                       char* name, 
                       void* data, 
-                      const unsigned size, 
+                      const int size, 
                       int* last_id) {
     sqlite3* db = NULL;
     int id = *last_id;

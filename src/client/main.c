@@ -1,6 +1,3 @@
-#include "ui.h"
-#include "app.h"
-
 #include <pthread.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -8,10 +5,19 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "app.h"
+
 #define IP "127.0.0.1"
 #define PORT 6969
 
-void manageConn(connection_t* c, msg_t* msg);
+bool name_filter(char a) {
+    if (!(a >= 48 && a <= 57) && 
+        !(a >= 65 && a <= 90) &&
+        !(a >= 97 && a <= 122)) {
+            return false;
+        }
+    return true;
+}
 
 int main() {
     // Getting ENVs
@@ -30,17 +36,32 @@ int main() {
 
     // allocating mem for structures used to send messages 
     connection_t c;
-    msg_t* msg = (msg_t*)calloc(1, sizeof(msg_t));
+    
+    msg_t* msgin = (msg_t*)calloc(1, sizeof(msg_t));
+    msg_t* msgout = (msg_t*)calloc(1, sizeof(msg_t));
+
+    username_t* chats = NULL;
+    int n_chats = get_chats(chats);
+    if (!chats) {
+        // TEHDOLG
+        return 1;
+    }
+
+    ui_t* ui_data = ui_init(MAX_MESSAGE_SIZE, (char*)chats, n_chats, 
+                            sizeof(username_t));
 
     // saving the username and the reciever
-    while (getInput(c.addr.from, sizeof(username_t), 
-           "ENTER YOUR USERNAME: ") != 0);
-    while (getInput(c.addr.to, sizeof(username_t), 
-           "WHO WOULD YOU LIKE TO CHAT WITH: ") != 0);
-
-    if (printout_history(c.addr.to) < 0) {
-        printf("Failed to get message history with this user\n");
-    }
+    ui_get_input(ui_data, c.addr.from, sizeof(username_t), 
+                 "ENTER YOUR USERNAME:", name_filter);
+    ui_get_curr_chat(ui_data, c.addr.to);
+    
+    // launch main interface window
+    void* args = {ui_data};
+    pthread_t ui_thread; 
+    pthread_create(&ui_thread, 
+                    NULL, 
+                    ui_handle, 
+                    (void*)&args);
 
     // loop that re-tries to connect when conn breaks
     while (true) {
@@ -58,12 +79,14 @@ int main() {
         } 
         else if (ret == NET_INVALID_NAME) {
             printf("Invalid name...\n");
-            free(msg);
+            free(msgin);
+            free(msgout);
             return 1;
-        } 
+        }
         else if (ret == NET_USER_EXISTS) {
             printf("User already exists, choose another name...\n");
-            free(msg);
+            free(msgin);
+            free(msgout);
             return 1;
         } 
         else if (ret == NET_CONN_DOWN) {
@@ -75,13 +98,16 @@ int main() {
         }
 
         // message sender/reciever
-        manageConn(&c, msg);
+        manageConn(&c, ui_data, msgin, msgout);
 
         // close connection if manageConn returned
         closeConn(&c);
     }
 
-    free(msg);
+    free(msgin);
+    free(msgout);
+    pthread_join(ui_thread, NULL);
+    ui_close(ui_data);
 
     return 0;
 }

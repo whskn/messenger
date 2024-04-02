@@ -160,10 +160,7 @@ void* manageConnection(void* void_args) {
             HANDLE_SEND_ERROR(ret);
         } 
         else {
-            const int size = msg->text_size - 
-                             sizeof(msg->buffer) + 
-                             sizeof(*msg);
-            ret = history_push(DB_DIR, msg->names.to, (void*)msg, size);
+            ret = history_push(DB_DIR, msg->names.to, (void*)msg, msg_size(msg));
             if (ret != HST_SUCCESS) {
                 logger(LOG_ERROR, "Failed to push message to user's queue", 
                        false);

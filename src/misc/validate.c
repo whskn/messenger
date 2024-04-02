@@ -19,7 +19,7 @@ bool msg_is_valid(void* msg_void_ptr, const int size) {
 
     // negative checks
     if (size < MIN_MSG_SIZE || 
-        size != (int)(msg->text_size + sizeof(msg_t) - sizeof(msg->buffer)) ||
+        size != msg_size(msg) ||
         
         message_len == MAX_MESSAGE_SIZE ||
         // Last char of the message must always be \0. 

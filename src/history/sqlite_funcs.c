@@ -66,11 +66,11 @@ int del_row(sqlite3* db, int id) {
  * 
  * @return sqlite error code
 */
-int read_blob(sqlite3* db, int id, void* data, const unsigned size, 
+int read_blob(sqlite3* db, int id, void* data, const int size, 
               int* save_size_to) {
     sqlite3_blob* blob;
-    unsigned blob_size;
-    unsigned read_size;
+    int blob_size;
+    int read_size;
     int ret = SQLITE_OK;
     
     // error handling
@@ -162,7 +162,7 @@ int close_db(sqlite3* db) {
  * Calling thread must free() memory.
 */
 char* build_filename(char* dir, char* filename, const char* extension) {
-    unsigned size = (dir != NULL) ? strlen(dir) : 0 + 
+    int size = (dir != NULL) ? strlen(dir) : 0 + 
                     strlen(filename) + 
                     strlen(extension) + 1; // +1 for \0 byte 
 

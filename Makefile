@@ -1,35 +1,51 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g
+CURSES = -lncurses
 
 
-all: sqlite3 history misc client server
-	rm -f src/history/*.o src/misc/*.o
+all: clean sqlite3 history misc client server
+	rm -f src/history/*.o src/misc/*.o 
 
 
 # Client
-client: sqlite_funcs cli_main cli_network ui app
+client: sqlite_funcs cli_main cli_network render ui app
 	$(CC) $(CFLAGS) -o $@ src/client/main.o \
 						  src/client/network.o \
-						  src/client/ui.o \
 						  src/client/app.o \
+						  \
+						  src/client/interface/render.o \
+						  src/client/interface/ui.o \
+						  \
 						  src/history/sqlite/sqlite3.o \
 						  src/history/history.o \
 						  src/history/sqlite_funcs.o \
+						  \
 						  src/misc/blocking_read.o \
-						  src/misc/validate.o
-	rm -f src/client/*.o
+						  src/misc/validate.o \
+						  $(CURSES)
+	rm -f src/client/*.o src/client/interface/*.o
 
 cli_main: 
 	$(CC) $(CFLAGS) -c -o src/client/main.o src/client/main.c 
 
-ui: 
-	$(CC) $(CFLAGS) -c -o src/client/ui.o src/client/ui.c 
 
 cli_network: 
 	$(CC) $(CFLAGS) -c -o src/client/network.o src/client/network.c
 
 app:
 	$(CC) $(CFLAGS) -c -o src/client/app.o src/client/app.c
+
+# Interface
+# interface: ui render
+# 	ld -r -o src/client/interface/interface.o src/client/interface/ui.o \ 
+# 			 								  src/client/interface/render.o
+
+ui: 
+	$(CC) $(CFLAGS) -c -o src/client/interface/ui.o src/client/interface/ui.c 
+
+render: 
+	$(CC) $(CFLAGS) -c -o src/client/interface/render.o \
+						  src/client/interface/render.c 
 
 
 # Server
@@ -38,9 +54,11 @@ server: srv_main serv srv_network logger
 							  src/server/network.o \
 							  src/server/serv.o \
 							  src/server/logger.o \
+							  \
 							  src/history/history.o \
 							  src/history/sqlite/sqlite3.o \
 							  src/history/sqlite_funcs.o \
+							  \
 							  src/misc/blocking_read.o \
 							  src/misc/validate.o
 	rm -f src/server/*.o
@@ -80,4 +98,4 @@ misc:
 
 clean:
 	rm -f server client src/client/*.o src/server/*.o src/history/*.o \
-		  src/misc/*.o
+		  src/misc/*.o src/client/interface/*.o

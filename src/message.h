@@ -13,6 +13,7 @@ be different due to paddings compiler make.
                            sizeof(int) + \
                            sizeof(char) * 2)
 
+#define msg_size(msg) (int)(msg->text_size - sizeof(msg->buffer) + sizeof(*msg))
 
 typedef char username_t[32];
 

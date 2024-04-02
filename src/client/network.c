@@ -136,16 +136,20 @@ size_t strnlen(const char* s, size_t len) {
  * so that function won't copy the message. This can help avoid redunduncy.
  * 
  * @param c connection 
+ * @param msg message struct
  * @param buffer message's buffer (better be pointed at c->msg->buffer)
- * @param length length of the message in buffer
  * 
  * @return size of message sent on success, error code otherwise
 */
-int sendMessage(connection_t* c, msg_t* msg) {
+int sendMessage(connection_t* c, msg_t* msg, char* buffer) {
+    if (buffer != msg->buffer) {
+        strncpy(msg->buffer, buffer, MAX_MESSAGE_SIZE);
+    }
+
     msg->text_size = strnlen(msg->buffer, MAX_MESSAGE_SIZE) + 1; // for \0
     msg->timestamp = time(NULL);
     memcpy(&(msg->names), &(c->addr), sizeof(c->addr));
-    int msg_size = msg->text_size + sizeof(msg_t) - sizeof(msg->buffer);
+    int msg_size = msg_size(msg);
     if (!msg_is_valid((void*)msg, msg_size)) {
         return NET_INVAL_MSG_FORMAT;
     }

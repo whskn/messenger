@@ -206,10 +206,9 @@ int closeConnection(conn_t* conn, sem_t* mutex) {
  * @return error codes
 */
 int sendMessage(int fd, msg_t* msg) {
-    int packet_size = msg->text_size + sizeof(*msg) - sizeof(msg->buffer);
     int ret;
 
-    ret = write(fd, msg, packet_size);
+    ret = write(fd, msg, msg_size(msg));
     if (ret < 0) {
         return NET_CHECK_ERRNO;
     } 
