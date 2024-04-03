@@ -109,8 +109,7 @@ bool username_is_valid(username_t name) {
  * @return idx in conns array or error codes 
 */
 int authUser(int fd, conn_t* conns, sem_t* mutex) {
-    username_t authBuffer;
-    bzero(authBuffer, sizeof(authBuffer));
+    username_t authBuffer = {0};
     char code[HS_CODE_SIZE];
     int ret;
 

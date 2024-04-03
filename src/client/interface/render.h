@@ -31,7 +31,7 @@ typedef struct {
 extern void render_top_bar(ui_t* ui_data);
 extern void render_side_bar(ui_t* ui_data);
 extern void render_msg_hist(ui_t* ui_data);
-extern void clear_footer(ui_t* ui_data);
+extern void render_footer(ui_t* ui_data);
 extern void render_msg_input(ui_t* ui_data);
 extern bool check_size(ui_t* ui_data);
 extern void render_get_input(ui_t* ui_data, 

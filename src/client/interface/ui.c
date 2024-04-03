@@ -39,7 +39,7 @@ ui_t* ui_init(int buffer_len,
     ui_data->chats       = chats;
     ui_data->chats_len   = chats_len;
     ui_data->name_size   = sizeof_username;
-    ui_data->curr_chat   = 0;
+    ui_data->curr_chat   = chats_len ? 0 : -1;
     ui_data->text_len    = 0;
     ui_data->window      = stdscr;
 
@@ -67,7 +67,7 @@ ui_t* ui_init(int buffer_len,
         exit(EXIT_FAILURE);
     }
 
-    *ui_data->code = 0; // to pull chat history
+    *ui_data->code = 0; 
     ui_data->bridge_fd = fd;
 
     return ui_data;
@@ -85,7 +85,7 @@ void* ui_handle(void* args) {
             render_top_bar(ui_data);
             render_side_bar(ui_data);
             render_msg_hist(ui_data);
-            clear_footer(ui_data);
+            render_footer(ui_data);
             render_msg_input(ui_data);
         }
         refresh();
@@ -219,8 +219,13 @@ int handle_input(ui_t* ui_data) {
         case '\n':
             if (ui_data->input_buffer[0] == '\0') {
                 break;
+            } 
+            if (ui_data->chats_len > 0 && 
+                ui_data->curr_chat < ui_data->chats_len && 
+                ui_data->curr_chat >= 0) {
+                    // TEHDOLG
+                    break;
             }
-
             return MSG_TO_SEND;
 
         case KEY_BACKSPACE:

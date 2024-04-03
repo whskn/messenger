@@ -28,13 +28,23 @@
 #define USERNAME_CHAR '@'
 #define CHATS_BAGE "YOUR CHATS:"
 #define MESSAGE_BAGE "type your message here"
-#define NO_HISTORY "no message histroy with this user..."
+#define NO_HISTORY "There is no message history with this user"
 #define TOO_SMALL "window is too small"
 #define USERNAME_SHORTAGE "..."
 #define BADNAME_WANRING "Allowed characters: a-z, A-Z, and 0-9"
+#define NO_CHATS "NO CHATS"
+#define CHAT_ADD_HINT "CTRL + N TO ADD ONE"
+#define CHOOSE_CHAT "Choose a chat to start messaging"
 
 
-#define CHAT(ui_data, index) ui_data->chats + ui_data->name_size * index
+#define CHAT(ui_data, index) (ui_data->chats_len > 0 && \
+                              index < ui_data->chats_len  && \
+                              index >= 0\
+                              ? ui_data->chats + ui_data->name_size * index \
+                              : NULL)
+
+#define CURR_CHAT(ui_data) CHAT(ui_data, ui_data->curr_chat)
+
 #define FOOTER_HEIGHT(ui_data, max_x) \
         (MIN_FOOTER_HEIGHT + ui_data->text_len / max_x)
 
@@ -81,11 +91,31 @@ void render_top_bar(ui_t* ui_data) {
         mvprintw(row, i, " ");
     }
 
-    mvprintw(row, NAME_LEFT_MARGIN, "%c%s", USERNAME_CHAR, 
-             CHAT(ui_data, ui_data->curr_chat));
+    char* chat = CURR_CHAT(ui_data);
+    if (chat != NULL) {
+        mvprintw(row, NAME_LEFT_MARGIN, "%c%s", USERNAME_CHAR, chat);
+    } 
     mvprintw(row, getmaxx(ui_data->window) - SIDE_BAR_WIDTH(ui_data), "%s", 
              CHATS_BAGE);
     attroff(COLOR_PAIR(2));
+}
+
+void render_empty_side_bar(ui_t* ui_data) {
+    if (SIDE_BAR_WIDTH(ui_data) < 1) return;
+    const int max_x = getmaxx(ui_data->window);
+    const int max_y = getmaxy(ui_data->window);
+    
+    int top_margin = HEADER_HEIGHT;
+    int col = max_x - SIDE_BAR_WIDTH(ui_data);
+    int height = max_y - HEADER_HEIGHT - FOOTER_HEIGHT(ui_data, max_x);
+
+    mvprintw(top_margin + height / 2 - 1,
+             col + (SIDE_BAR_WIDTH(ui_data) - (sizeof(NO_CHATS) - 1)) / 2, 
+             NO_CHATS);
+
+    mvprintw(top_margin + height / 2 + 1,
+             col + (SIDE_BAR_WIDTH(ui_data) - (sizeof(CHAT_ADD_HINT) - 1)) / 2, 
+             CHAT_ADD_HINT);
 }
 
 
@@ -98,8 +128,11 @@ void render_side_bar(ui_t* ui_data) {
     int col = max_x - SIDE_BAR_WIDTH(ui_data);
     int height = max_y - HEADER_HEIGHT - FOOTER_HEIGHT(ui_data, max_x);
 
-    static int top_idx = 0;
+    if (ui_data->chats_len < 1) {
+        return render_empty_side_bar(ui_data);
+    }
 
+    static int top_idx = 0;
     if (ui_data->curr_chat >= top_idx + height) {
         top_idx = ui_data->curr_chat - height + 1;
     } 
@@ -107,15 +140,14 @@ void render_side_bar(ui_t* ui_data) {
         top_idx = ui_data->curr_chat;
     }
 
+    char* chat;
     for (int i = top_idx; 
-          i < ui_data->chats_len && 
-          i < height + top_idx && 
-          *CHAT(ui_data, i) != '\0'; 
+         i < ui_data->chats_len && 
+         i < height + top_idx && 
+         (chat = CHAT(ui_data, i)) != NULL;
          i++) 
     {
-        if (i == ui_data->curr_chat) {
-            attron(COLOR_PAIR(1));
-        }
+        if (i == ui_data->curr_chat) attron(COLOR_PAIR(1));
 
         for (int j = 0; j < SIDE_BAR_WIDTH(ui_data); j++) {
             mvprintw(i + top_margin - top_idx, max_x - j, " ");
@@ -123,7 +155,7 @@ void render_side_bar(ui_t* ui_data) {
 
         if (SIDE_BAR_WIDTH(ui_data) <
             USERNAME_CHAR_SIZE + 
-            strlen(CHAT(ui_data, i)) + 
+            strlen(chat) + 
             RIGHT_CHAT_MARGIN) {
 
             mvprintw(i + top_margin - top_idx, col, "%c%.*s%s", USERNAME_CHAR, 
@@ -131,12 +163,11 @@ void render_side_bar(ui_t* ui_data) {
                      USERNAME_CHAR_SIZE - 
                      (int)strlen(USERNAME_SHORTAGE) - 
                      RIGHT_MESSAGE_MARGIN, 
-                     CHAT(ui_data, i),
+                     chat,
                      USERNAME_SHORTAGE);
             }
         else {
-            mvprintw(i + top_margin - top_idx, col, "%c%s", USERNAME_CHAR, 
-                    CHAT(ui_data, i));
+            mvprintw(i + top_margin - top_idx, col, "%c%s", USERNAME_CHAR, chat);
         }
 
         attroff(COLOR_PAIR(1));
@@ -185,8 +216,16 @@ void render_msg_hist(ui_t* ui_data) {
                       LEFT_MSG_MARGIN - RIGHT_MESSAGE_MARGIN;
     int row = max_y - FOOTER_HEIGHT(ui_data, max_x) - 1;
 
+    if (!CURR_CHAT(ui_data)) {
+        mvprintw(max_y / 2 + HEADER_HEIGHT, 
+                 (width - (sizeof(CHOOSE_CHAT) - 1)) / 2, 
+                 "%s", CHOOSE_CHAT);
+        return;
+    }
     if (ui_data->messages[ui_data->hist_head].buffer == NULL) {
-        mvprintw(row, 0, "%s", NO_HISTORY);
+        mvprintw(row / 2 + HEADER_HEIGHT, 
+                 (width - (sizeof(NO_HISTORY) - 1)) / 2, 
+                 "%s", NO_HISTORY);
         return;
     }
 
@@ -223,6 +262,8 @@ void render_msg_hist(ui_t* ui_data) {
 }
 
 void render_msg_input(ui_t* ui_data) {
+    if (!CURR_CHAT(ui_data)) return;
+
     int row = getmaxy(ui_data->window) +
               FOOTER_LINE_H - 
               FOOTER_HEIGHT(ui_data, getmaxx(ui_data->window));
@@ -238,7 +279,9 @@ void render_msg_input(ui_t* ui_data) {
     }
 }
 
-void clear_footer(ui_t* ui_data) {
+void render_footer(ui_t* ui_data) {
+    if (!CURR_CHAT(ui_data)) return;
+
     const int max_x = getmaxx(ui_data->window);
     const int max_y = getmaxy(ui_data->window);
 
