@@ -162,9 +162,9 @@ int close_db(sqlite3* db) {
  * Calling thread must free() memory.
 */
 char* build_filename(char* dir, char* filename, const char* extension) {
-    int size = (dir != NULL) ? strlen(dir) : 0 + 
-                    strlen(filename) + 
-                    strlen(extension) + 1; // +1 for \0 byte 
+    int size = (dir != NULL ? strlen(dir) : 0) + 
+                strlen(filename) + 
+                strlen(extension) + 1; // +1 for \0 byte 
 
     char* buffer = (char*)malloc(size);
     if (buffer == NULL) {

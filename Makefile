@@ -3,12 +3,14 @@ CFLAGS = -Wall -Wextra -g
 CURSES = -lncurses
 
 
-all: clean sqlite3 history misc client server
+all: clean directories  sqlite3 history misc tests/client tests/server
 	rm -f src/history/*.o src/misc/*.o 
 
+directories:
+	mkdir -p tests tests/client_chats tests/server_chats
 
 # Client
-client: sqlite_funcs cli_main cli_network render ui app
+tests/client: sqlite_funcs cli_main cli_network render ui app
 	$(CC) $(CFLAGS) -o $@ src/client/main.o \
 						  src/client/network.o \
 						  src/client/app.o \
@@ -36,10 +38,6 @@ app:
 	$(CC) $(CFLAGS) -c -o src/client/app.o src/client/app.c
 
 # Interface
-# interface: ui render
-# 	ld -r -o src/client/interface/interface.o src/client/interface/ui.o \ 
-# 			 								  src/client/interface/render.o
-
 ui: 
 	$(CC) $(CFLAGS) -c -o src/client/interface/ui.o src/client/interface/ui.c 
 
@@ -49,8 +47,8 @@ render:
 
 
 # Server
-server: srv_main serv srv_network logger
-	$(CC) $(CFLAGS) -o server src/server/main.o \
+tests/server: srv_main serv srv_network logger
+	$(CC) $(CFLAGS) -o $@ src/server/main.o \
 							  src/server/network.o \
 							  src/server/serv.o \
 							  src/server/logger.o \
@@ -95,7 +93,10 @@ misc:
 	$(CC) $(CFLAGS) -c -o src/misc/blocking_read.o src/misc/blocking_read.c
 	$(CC) $(CFLAGS) -c -o src/misc/validate.o src/misc/validate.c
 
+purge: clean
+	rm -r -f tests
 
 clean:
 	rm -f server client src/client/*.o src/server/*.o src/history/*.o \
-		  src/misc/*.o src/client/interface/*.o
+		  src/misc/*.o src/client/interface/*.o tests/client tests/server
+		

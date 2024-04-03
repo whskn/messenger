@@ -36,15 +36,6 @@
 #define CHAT_ADD_HINT "CTRL + N TO ADD ONE"
 #define CHOOSE_CHAT "Choose a chat to start messaging"
 
-
-#define CHAT(ui_data, index) (ui_data->chats_len > 0 && \
-                              index < ui_data->chats_len  && \
-                              index >= 0\
-                              ? ui_data->chats + ui_data->name_size * index \
-                              : NULL)
-
-#define CURR_CHAT(ui_data) CHAT(ui_data, ui_data->curr_chat)
-
 #define FOOTER_HEIGHT(ui_data, max_x) \
         (MIN_FOOTER_HEIGHT + ui_data->text_len / max_x)
 
@@ -74,13 +65,13 @@ void render_get_input(ui_t* ui_data, char* printout, int printout_len,
     int height = getmaxy(ui_data->window);
 
     mvprintw(height / 2 - 2, (weight - printout_len) / 2, printout);
-    if (badname) attron(COLOR_PAIR(2));
-    mvprintw(height / 2, (weight - input_len) / 2, "%s", input);
     if (badname) {
-        attroff(COLOR_PAIR(2));
+        attron(COLOR_PAIR(4));
         mvprintw(height / 2 + 2, (weight - input_len) / 2, "%s", 
                  BADNAME_WANRING);
     }
+    mvprintw(height / 2, (weight - input_len) / 2, "%s", input);
+    attroff(COLOR_PAIR(4));
 }
 
 void render_top_bar(ui_t* ui_data) {
@@ -216,7 +207,7 @@ void render_msg_hist(ui_t* ui_data) {
                       LEFT_MSG_MARGIN - RIGHT_MESSAGE_MARGIN;
     int row = max_y - FOOTER_HEIGHT(ui_data, max_x) - 1;
 
-    if (!CURR_CHAT(ui_data)) {
+    if (CURR_CHAT(ui_data) == NULL) {
         mvprintw(max_y / 2 + HEADER_HEIGHT, 
                  (width - (sizeof(CHOOSE_CHAT) - 1)) / 2, 
                  "%s", CHOOSE_CHAT);
@@ -262,7 +253,7 @@ void render_msg_hist(ui_t* ui_data) {
 }
 
 void render_msg_input(ui_t* ui_data) {
-    if (!CURR_CHAT(ui_data)) return;
+    if (CURR_CHAT(ui_data) == NULL) return;
 
     int row = getmaxy(ui_data->window) +
               FOOTER_LINE_H - 
@@ -280,7 +271,7 @@ void render_msg_input(ui_t* ui_data) {
 }
 
 void render_footer(ui_t* ui_data) {
-    if (!CURR_CHAT(ui_data)) return;
+    if (CURR_CHAT(ui_data) == NULL) return;
 
     const int max_x = getmaxx(ui_data->window);
     const int max_y = getmaxy(ui_data->window);

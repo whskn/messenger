@@ -1,6 +1,14 @@
 #include <time.h>
 #include <ncurses.h>
 
+
+#define CHAT(ui_data, index) (ui_data->chats_len > 0 && \
+                              index < ui_data->chats_len  && \
+                              index >= 0\
+                              ? ui_data->chats + ui_data->name_size * index \
+                              : NULL)
+#define CURR_CHAT(ui_data) CHAT(ui_data, ui_data->curr_chat)
+
 typedef struct {
     char* username;
     time_t timestamp;
@@ -24,6 +32,7 @@ typedef struct {
     int chats_len;
     int curr_chat;
     int name_size;
+    // int chats_array_len;
 
     WINDOW* window;
 } ui_t;

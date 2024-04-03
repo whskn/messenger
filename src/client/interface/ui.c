@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -6,12 +7,12 @@
 
 #include "ui.h"
 
-#define ME_NAMETAG "me"
 #define MAX_HIST 50
+#define KEY_CTRL(x) (x & 0x1f)
 
 int handle_input(ui_t* ui_data);
-void add_chat(ui_t* ui_data);
-void add_chat(ui_t* ui_data);
+void ui_clear_history(ui_t* ui_data);
+
 
 
 /**
@@ -39,7 +40,7 @@ ui_t* ui_init(int buffer_len,
     ui_data->chats       = chats;
     ui_data->chats_len   = chats_len;
     ui_data->name_size   = sizeof_username;
-    ui_data->curr_chat   = chats_len ? 0 : -1;
+    ui_data->curr_chat   = 0;
     ui_data->text_len    = 0;
     ui_data->window      = stdscr;
 
@@ -60,7 +61,7 @@ ui_t* ui_init(int buffer_len,
     // Map the shared memory into the address space
     ftruncate(fd, sizeof(int));
     ui_data->code = \
-        mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (ui_data->code == MAP_FAILED) {
         // TEHDOLG ERORR HANDLING
         close(fd);
@@ -171,19 +172,53 @@ void ui_close(ui_t* ui_data) {
 }
 
 
+void ui_add_chat(ui_t* ui_data, const char* username) {
+    // TEHDOLG
+    int namelen = strnlen(username, ui_data->name_size);
+    if (namelen == ui_data->name_size) return;
+
+    int idx = 0;
+    for (; idx < ui_data->chats_len; idx++) {
+        if (!strcmp(username, ui_data->chats + ui_data->name_size * idx)) break;
+    }
+    if (idx < ui_data->chats_len) {
+        ui_data->curr_chat = idx;
+        return;
+    }
+
+    ui_data->chats = (char*)realloc(ui_data->chats, ++ui_data->chats_len 
+                                                    * ui_data->name_size);
+
+    char* last_cell = ui_data->chats + ui_data->name_size 
+                      * (ui_data->chats_len - 1);
+    strcpy(last_cell, username);
+    ui_data->curr_chat = ui_data->chats_len - 1;
+}
 
 
+void ui_remove_chat(ui_t* ui_data, const char* username) {
+    // TEHDOLG
+    int namelen = strnlen(username, ui_data->name_size);
+    if (namelen == ui_data->name_size) return;
 
+    int idx = 0;
+    for (; idx < ui_data->chats_len; idx++) {
+        if (!strcmp(username, ui_data->chats + ui_data->name_size * idx)) break;
+    }
+    if (idx == ui_data->chats_len) return;
 
+    // shift further names
+    char* dst,* src;
+    for (int i = idx + 1; i < ui_data->chats_len; i++) {
+        dst = ui_data->chats + (i - 1) * ui_data->name_size;
+        src = ui_data->chats + i * ui_data->name_size;
+        memcpy(dst, src, ui_data->name_size);
+    }
 
-void add_chat(ui_t* ui_data) {
-    char* username = (char*)malloc(ui_data->name_size);
-    username[0] = '\0';
-
-    
-
-    
-    free(username);
+    ui_data->chats = (char*)realloc(ui_data->chats, --ui_data->chats_len 
+                                                    * ui_data->name_size);
+                                                    
+    if (ui_data->curr_chat) ui_data->curr_chat--;
 }
 
 void ui_get_curr_chat(ui_t* ui_data, char* username) {
@@ -207,23 +242,26 @@ int handle_input(ui_t* ui_data) {
         case KEY_UP:
             if (ui_data->curr_chat > 0) {
                 ui_data->curr_chat = ui_data->curr_chat - 1;
+                ui_clear_history(ui_data);
+                return CHAT_SWITCH;
             }
-            return CHAT_SWITCH;
+            break;
 
         case KEY_DOWN:
             if (ui_data->curr_chat < ui_data->chats_len - 1) {
                 ui_data->curr_chat++;
+                ui_clear_history(ui_data);
+                return CHAT_SWITCH;
             }
-            return CHAT_SWITCH;
+            break;
 
         case '\n':
             if (ui_data->input_buffer[0] == '\0') {
                 break;
             } 
-            if (ui_data->chats_len > 0 && 
-                ui_data->curr_chat < ui_data->chats_len && 
-                ui_data->curr_chat >= 0) {
-                    // TEHDOLG
+            if (ui_data->chats_len < 1 || 
+                ui_data->curr_chat >= ui_data->chats_len ||
+                ui_data->curr_chat < 0) {
                     break;
             }
             return MSG_TO_SEND;
@@ -237,6 +275,9 @@ int handle_input(ui_t* ui_data) {
         case KEY_RESIZE:
             break;
 
+        case KEY_CTRL('n'):
+            return ADD_CHAT;
+
         default:
             if (ui_data->text_len < ui_data->buffer_len - 1) { // for new char and \0
                 ui_data->input_buffer[ui_data->text_len++] = (char)ch;
@@ -248,11 +289,22 @@ int handle_input(ui_t* ui_data) {
     return NOTHING;
 }
 
+
+void ui_clear_history(ui_t* ui_data) {
+    for (int i = 0; i < ui_data->history_len; i++) {
+        if (ui_data->messages[i].username) free(ui_data->messages[i].buffer);
+        if (ui_data->messages[i].buffer)   free(ui_data->messages[i].buffer);
+    }
+
+    ui_data->hist_head = 0;
+}
+
 void ui_append_message(ui_t* ui_data, time_t timestamp, 
                    char* message, int message_size,
                    char* username) {
     int newhead = (ui_data->hist_head + 1) % ui_data->history_len;
     ui_msg_t* m = &(ui_data->messages[newhead]);
+    
     if (message_size < 1) {
         return;
     }
@@ -273,4 +325,3 @@ void ui_append_message(ui_t* ui_data, time_t timestamp,
 
     ui_data->hist_head = newhead;
 }
-

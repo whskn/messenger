@@ -12,6 +12,8 @@
 #define ADDR_INPUT "ENTER SERVER's IP AND PORT (IP:PORT) :"
 #define USERNAME_INPUT "ENTER YOUR USERNAME:"
 
+#define ADDR "127.0.0.1:6969"
+
 bool name_filter(char a);
 bool address_filter(char a);
 int parse_address(char* addr);
@@ -19,8 +21,8 @@ int parse_address(char* addr);
 
 int main() {
     username_t* chats = NULL;
-    int n_chats = get_chats(chats);
-    if (!chats) {
+    int n_chats = get_chats(&chats);
+    if (n_chats < 0) {
         // TEHDOLG
         return 1;
     }
@@ -30,19 +32,22 @@ int main() {
     
 
     // asking for ip:port of a server
-    char addr[MAX_ADDR_SIZE];
+    char addr[MAX_ADDR_SIZE] = ADDR;
     int port;
     while (true) {
-        ui_get_input(ui_data, addr, MAX_ADDR_SIZE, ADDR_INPUT, address_filter);
+        // ui_get_input(ui_data, addr, MAX_ADDR_SIZE, ADDR_INPUT, address_filter);
         port = parse_address(addr);
 
-        if (addr == NULL || port < 0) {
+        // TEHDOLG proper check
+        if (port < 0) {
             printf("Missing ip or port env variable...\n");
             continue;
         } else if (port < 1024 || port > 65535) {
             printf("Invalid port...\n");
             continue;
         }
+        
+        break;
     }
 
 
@@ -56,11 +61,13 @@ int main() {
                  name_filter);
     ui_get_curr_chat(ui_data, c.addr.to);
     
+    // loading message history
+    load_history(ui_data, c.addr.from);
 
     // launch main interface window
     void* args = {ui_data};
     pthread_t ui_thread; 
-    pthread_create(&ui_thread, NULL, ui_handle, (void*)&args);
+    pthread_create(&ui_thread, NULL, ui_handle, args);
 
 
     // loop that re-tries to connect when conn breaks
@@ -110,16 +117,6 @@ int main() {
     ui_close(ui_data);
 
     return 0;
-}
-
-
-bool name_filter(char a) {
-    if (!(a >= 48 && a <= 57) && 
-        !(a >= 65 && a <= 90) &&
-        !(a >= 97 && a <= 122)) {
-            return false;
-        }
-    return true;
 }
 
 bool address_filter(char a) {
