@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "history.h"
 #include "sqlite_funcs.h"
+#include "queries.h"
 
+#include "history.h"
+
+char* build_filename(char* dir, char* filename, const char* extension);
 
 #define GET_DB(db, dir, name, extension)                  \
     char* filename = build_filename(dir, name, EXTENSION); \
@@ -150,4 +153,32 @@ int history_read_next(char* dir,
     *last_id = id;
 
     return read_size;
+}
+
+
+/**
+ * This function concatinates dir, filename and extension strings and 
+ * returns a pointer to the string. Returns NULL if allocation failed.
+ * 
+ * Calling thread must free() memory.
+*/
+char* build_filename(char* dir, char* filename, const char* extension) {
+    int size = (dir != NULL ? strlen(dir) : 0) + 
+                strlen(filename) + 
+                strlen(extension) + 1; // +1 for \0 byte 
+
+    char* buffer = (char*)malloc(size);
+    if (buffer == NULL) {
+        return NULL;
+    }
+
+    buffer[0] = '\0'; // so strcat will work like strcpy
+
+    if (dir != NULL) {
+        strcat(buffer, dir);
+    }
+    strcat(buffer, filename);
+    strcat(buffer, extension);
+
+    return buffer;
 }

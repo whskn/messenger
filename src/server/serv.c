@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "serv.h"
 
@@ -8,9 +9,11 @@
 #include "../history/history.h"
 #include "../misc/blocking_read.h"
 #include "../misc/validate.h"
+#include "config.h"
 
 
 #define DB_DIR "server_chats/"
+
 
 #define HANDLE_SEND_ERROR(ret) \
     if (ret == NET_CHECK_ERRNO) { \
@@ -22,6 +25,59 @@
         break; \
     }
 
+
+// TEHDOLG
+int serv_init(conn_t** conns, sem_t** mutex, const int port) {
+    // allocating mem for connections
+    conn_t* _conns = (conn_t*)calloc(MAX_CONNECTIONS, sizeof(conn_t));
+    if (_conns == NULL) {
+        logger(LOG_ERROR, "Problem with calloc", true);
+        return NET_CRITICAL_FAIL;
+    }
+
+    for (int i = 0; i < MAX_CONNECTIONS; i++) _conns[i].fd = -2;
+    
+    // getting a mutex
+    sem_t* _mutex = (sem_t*)calloc(1, sizeof(sem_t));
+    if (_mutex == NULL) {
+        free(_conns);
+        logger(LOG_ERROR, "Problem with calloc", true);
+        return NET_CRITICAL_FAIL;
+    }
+    if (sem_init(_mutex, 0, 1) < 0) {
+        free(_conns);
+        free(_mutex);
+        logger(LOG_ERROR, "Problem with sem_init", true);
+        return NET_CRITICAL_FAIL;
+    }
+
+    int fd = openMainSocket(port);
+    if (fd < 0) {
+        free(_conns);
+        free(_mutex);
+        logger(LOG_ERROR, "Problem opening socket", true);
+        return NET_CRITICAL_FAIL;
+    }
+
+    *conns = _conns;
+    *mutex = _mutex;
+
+    return fd;
+}
+
+int serv_close(int fd, conn_t** conns, sem_t** mutex) {
+    sem_destroy(*mutex);
+    free(*conns);
+    free(*mutex);
+    close(fd);
+    
+    *mutex = NULL;
+    *conns = NULL;
+
+    return NET_SUCCESS;
+}
+
+
 /**
  * Blocks current thread until new connection comes. Than auths new user
  * and returns id of the new connection. 
@@ -32,7 +88,7 @@
  * 
  * @return id or error code
 */
-int get_conn(int fd, conn_t* conns, sem_t* mutex) {
+int serv_get_conn(int fd, conn_t* conns, sem_t* mutex) {
     int connFd;
 
     int ret = harvestConnection(fd);
@@ -82,7 +138,7 @@ int flush_pending(char* username, int fd) {
     msg_t* msg = (msg_t*)calloc(1, sizeof(msg_t));
     int ret;
 
-    // LOCK DATABASE
+    // TEHDOLG LOCK DATABASE
     while (true) {
         ret = history_pull(DB_DIR, username, (void*)msg, sizeof(msg_t));
         if (ret == HST_TABLE_EMPTY) {
@@ -114,7 +170,7 @@ int flush_pending(char* username, int fd) {
  * 
  * @param void_args pointer to MC_arg_t casted to void*  
 */
-void* manageConnection(void* void_args) {
+void* serv_manage_conn(void* void_args) {
     MC_arg_t* args = (MC_arg_t*)void_args;
 
     // retreiving arguments

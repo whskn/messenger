@@ -1,8 +1,8 @@
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "sqlite_funcs.h"
+#include "queries.h"
 
 /**
  * Replaces value form id with the next avaliable id that is > current id.
@@ -152,32 +152,4 @@ int get_db(char* filename, sqlite3** db) {
 */
 int close_db(sqlite3* db) {
     return sqlite3_close_v2(db);
-}
-
-
-/**
- * This function concatinates dir, filename and extension strings and 
- * returns a pointer to the string. Returns NULL if allocation failed.
- * 
- * Calling thread must free() memory.
-*/
-char* build_filename(char* dir, char* filename, const char* extension) {
-    int size = (dir != NULL ? strlen(dir) : 0) + 
-                strlen(filename) + 
-                strlen(extension) + 1; // +1 for \0 byte 
-
-    char* buffer = (char*)malloc(size);
-    if (buffer == NULL) {
-        return NULL;
-    }
-
-    buffer[0] = '\0'; // so strcat will work like strcpy
-
-    if (dir != NULL) {
-        strcat(buffer, dir);
-    }
-    strcat(buffer, filename);
-    strcat(buffer, extension);
-
-    return buffer;
 }

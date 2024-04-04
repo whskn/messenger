@@ -1,0 +1,3 @@
+#define CONNECTION_TIMEOUT -1
+#define MAX_CONNECTIONS 512
+#define CONN_QUEUE 5

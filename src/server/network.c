@@ -1,19 +1,11 @@
-#include <stdio.h>
-#include <poll.h>
-#include <sys/socket.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/time.h>
+#include <stdbool.h>
 
 #include "../misc/blocking_read.h"
 #include "network.h"
-#include "logger.h"
-#include <errno.h>
+#include "config.h"
 
 /**
  * This function opens main socket that will recieve connections.
@@ -21,13 +13,13 @@
  * @param port what port place this socket on
  * @param fd pointer to file descriptor
  * 
- * @return erorr codes
+ * @return fd or erorr codes
 */
-int openMainSocket(const int port, int* fd) {
+int openMainSocket(const int port) {
     struct sockaddr_in address;
-    int tempFd;
+    int fd;
 
-    if ((tempFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         return NET_CHECK_ERRNO;
     }
 
@@ -36,18 +28,17 @@ int openMainSocket(const int port, int* fd) {
     address.sin_port = htons(port);
     address.sin_addr.s_addr = htonl(INADDR_ANY); 
     
-    if ((bind(tempFd, (struct sockaddr*)&address, sizeof(address))) != 0) { 
-        close(tempFd);
+    if ((bind(fd, (struct sockaddr*)&address, sizeof(address))) != 0) { 
+        close(fd);
         return NET_CHECK_ERRNO;
     } 
 
-    if ((listen(tempFd, CONN_QUEUE)) != 0) { 
-        close(tempFd);
+    if ((listen(fd, CONN_QUEUE)) != 0) { 
+        close(fd);
         return NET_CHECK_ERRNO;
     } 
 
-    *fd = tempFd;
-    return NET_SUCCESS;
+    return fd;
 }
 
 /**

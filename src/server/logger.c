@@ -1,9 +1,10 @@
-#include "logger.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include <errno.h>
+
+#include "logger.h"
 
 #define CLR_GOOD "\033[0;32m"
 #define CLR_ERROR "\033[0;31m"
