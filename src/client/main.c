@@ -3,131 +3,136 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
+#include <dirent.h>
+#include <signal.h>
+#include <regex.h>
 
+#include "../misc/validate.h"
+#include "config.h"
+#include "ui_config.h"
 #include "app.h"
 
 
-#define MAX_ADDR_SIZE sizeof("255.255.255.255:65535")
-#define ADDR_INPUT "ENTER SERVER's IP AND PORT (IP:PORT) :"
-#define USERNAME_INPUT "ENTER YOUR USERNAME:"
+bool check_addr(const char* ip, const char* port);
 
-#define ADDR "127.0.0.1:6969"
-
-bool name_filter(char a);
-bool address_filter(char a);
-int parse_address(char* addr);
-
-
-int main() {
-    username_t* chats = NULL;
-    int n_chats = get_chats(&chats);
-    if (n_chats < 0) {
-        // TEHDOLG
-        return 1;
-    }
-
-    ui_t* ui_data = ui_init(MAX_MESSAGE_SIZE, (char*)chats, n_chats, 
-                            sizeof(username_t));
-    
-
-    // asking for ip:port of a server
-    char addr[MAX_ADDR_SIZE] = ADDR;
-    int port;
-    while (true) {
-        // ui_get_input(ui_data, addr, MAX_ADDR_SIZE, ADDR_INPUT, address_filter);
-        port = parse_address(addr);
-
-        // TEHDOLG proper check
-        if (port < 0) {
-            printf("Missing ip or port env variable...\n");
-            continue;
-        } else if (port < 1024 || port > 65535) {
-            printf("Invalid port...\n");
-            continue;
-        }
-        
-        break;
-    }
-
-
-    // allocating mem for structures used to send messages 
+int main(int argc, char* argv[]) {
+    username_t my_name, my_passwd;
+    ui_t* ui_data = NULL;
+    chat_t* chats = NULL;
+    db_t* db = NULL;
     connection_t c;
-    msg_t* msgin  = (msg_t*)calloc(1, sizeof(msg_t));
-    msg_t* msgout = (msg_t*)calloc(1, sizeof(msg_t));
+    int n_of_chats;
+    void* buffer;
+    int user_id;
+    char* ip;
+    int port;
 
-    // saving the username and the reciever
-    ui_get_input(ui_data, c.addr.from, sizeof(username_t), USERNAME_INPUT, 
-                 name_filter);
-    ui_get_curr_chat(ui_data, c.addr.to);
-    
-    // loading message history
-    load_history(ui_data, c.addr.from);
+    if (argc < 3) {
+        printf("Usage: client [server IP] [server PORT]\n");
+        exit(1);
+    }
 
-    // launch main interface window
-    void* args = {ui_data};
-    pthread_t ui_thread; 
-    pthread_create(&ui_thread, NULL, ui_handle, args);
+    if (!check_addr(argv[1], argv[2])) {
+        printf("Invalid address\n");
+        exit(1);
+    }
+    ip = argv[1];
+    port = atoi(argv[2]);
 
+    if (db_open(NULL, DB_FILENAME, &db) < 0) {
+        printf("Failed to open database\n");
+        exit(1);
+    }
+    if ((n_of_chats = db_get_chats(db, &chats)) < 0) {
+        printf("Failed get your contacts\n");
+        exit(1);
+    }
+    if (!(ui_data = ui_init(chats, n_of_chats))) {
+        printf("Failed to launch interface\n");
+        exit(1);
+    }
+    buffer = (void*)calloc(1, MAX_PACKET_SIZE);
+    ui_get_input(ui_data, my_name, sizeof(username_t), USERNAME_INPUT, 
+                 name_filter, false);
+    ui_get_input(ui_data, my_passwd, sizeof(password_t), PASSWORD_INPUT, 
+                 passwd_filter, true);
 
     // loop that re-tries to connect when conn breaks
     while (true) {
-        sleep(1);
+        ui_warning(ui_data, loading_ani());
 
-        int ret = clientConnect(&c, addr, port);
-        if (ret == NET_CHECK_ERRNO) {
-            printf("Failed to connect: %s\n", strerror(errno));
-        } 
-        else if (ret == NET_SERVER_ERROR) {
-            printf("Server error...\n");
-        } 
-        else if (ret == NET_SERVER_OVERLOADED) {
-            printf("Server is overloaded...\n");
-        } 
-        else if (ret == NET_INVALID_NAME) {
-            printf("Invalid name...\n");
-            free(msgin);
-            free(msgout);
-            return 1;
-        }
-        else if (ret == NET_USER_EXISTS) {
-            printf("User already exists, choose another name...\n");
-            free(msgin);
-            free(msgout);
-            return 1;
-        } 
-        else if (ret == NET_CONN_DOWN) {
-            printf("Connection broke...\n");
-        }
-
-        if (ret != NET_SUCCESS) {
+        user_id = net_connect(&c, ip, port, my_name, my_passwd, false);
+        if (user_id == NET_CHECK_ERRNO  ||
+            user_id == NET_SERVER_ERROR ||
+            user_id == NET_SERVER_OVERLOADED ||
+            user_id == NET_CONN_DOWN) {
+                ui_warning(ui_data, loading_ani());
+                sleep(WARNING_SLEEP);
+                continue;
+        } else if (user_id == NET_TIMEOUT) {
+            ui_warning(ui_data, loading_ani());
             continue;
+        } else if (user_id == NET_INVALID_NAME) {
+            ui_warning(ui_data, INVAL_NAME);
+            sleep(WARNING_SLEEP);
+            break;
+        } else if (user_id == NET_USER_EXISTS) {
+            ui_warning(ui_data, USER_EXISTS);
+            sleep(WARNING_SLEEP);
+            break;
+        } else if (user_id == NET_NO_USER) {
+            ui_warning(ui_data, NO_SUCH_USER);
+            sleep(WARNING_SLEEP);
+            break;
+        } else if (user_id < 0) {
+            ui_warning(ui_data, UNKNOWN_ERR);
+            sleep(WARNING_SLEEP);
+            break;
         }
 
-        // message sender/reciever
-        manageConn(&c, ui_data, msgin, msgout);
-
-        // close connection if manageConn returned
-        closeConn(&c);
+        ui_flush_stdin();
+        ui_set_my_id(ui_data, user_id);
+        manage_conn(&c, ui_data, buffer, db);
+        net_close_conn(&c);
     }
 
-    free(msgin);
-    free(msgout);
-    pthread_join(ui_thread, NULL);
+    free(buffer);
     ui_close(ui_data);
+    db_close(db);
 
     return 0;
 }
 
-bool address_filter(char a) {
-    if ((a >= 48 || a <= 57) || a == '.' || a == ':') return true;
-    return false;
-}
+bool check_addr(const char* ip, const char* port) {
+    int ip_valid, port_valid;
+    regex_t regex;
 
-// cut off port and return it as an int
-int parse_address(char* addr) {
-    char* _ptr = addr; 
-    for (; *_ptr != ':'; _ptr++) if (*_ptr == '\0') return -1;
-    *_ptr++ = '\0';
-    return *_ptr >= 48 || *_ptr <= 57 ? atoi(_ptr) : -1;
+    const char* ip_pattern = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
+    const char* port_pattern = "^([1-5][0-9]{4}|[6-9][0-9]{3}|[1-9][0-9]{0,3})$";
+
+    if (regcomp(&regex, ip_pattern, REG_EXTENDED)) {
+        printf("Regex error\n");
+        exit(1);
+    }
+
+    ip_valid = regexec(&regex, ip, 0, NULL, 0); 
+    regfree(&regex);
+    if (ip_valid < 0) {
+        printf("Regex error\n");
+        exit(1);
+    }
+
+    if (regcomp(&regex, port_pattern, REG_EXTENDED)) {
+        printf("Regex error\n");
+        exit(1);
+    }
+
+    port_valid = regexec(&regex, port, 0, NULL, 0); 
+    regfree(&regex);
+    if (port_valid < 0) {
+        printf("Regex error\n");
+        exit(1);
+    }
+
+    return !(ip_valid | port_valid);
 }

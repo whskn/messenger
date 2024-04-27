@@ -2,4 +2,6 @@ client/client
 server/server
 *.o
 .vscode
-/tests
+/client1
+/client2
+/serv

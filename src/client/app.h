@@ -1,7 +1,5 @@
 #include "network.h"
-#include "interface/ui.h"
+#include "ui.h"
+#include "db.h"
 
-extern void manageConn(connection_t* c, ui_t* ui_data, msg_t* msgin, 
-                       msg_t* msgout);
-extern int get_chats(username_t** chats);
-extern int load_history(ui_t* ui_data, const char* myname);
+extern void manage_conn(connection_t* c, ui_t* ui_data, void* buffer, db_t* db);

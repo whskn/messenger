@@ -1,31 +1,35 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g
 CURSES = -lncurses
+SQLITE = -lsqlite3
+ICU = -licuuc
 
 
-all: clean directories  sqlite3 history misc tests/client tests/server
-	rm -f src/history/*.o src/misc/*.o 
+all: misc server client test_env
+	rm -f src/misc/*.o server client
 
-directories:
-	mkdir -p tests tests/client_chats tests/server_chats
+test_env:
+	mkdir -p client1 client2 serv
+	rm -f src/misc/*.o
+	cp client client1/client
+	cp client client2/client
+	cp server serv/server
+	rm -f client server
+	
+
 
 # Client
-tests/client: sqlite_funcs cli_main cli_network render ui app
+client: cli_main cli_network render ui app handlers cli_db
 	$(CC) $(CFLAGS) -o $@ src/client/main.o \
 						  src/client/network.o \
 						  src/client/app.o \
-						  \
-						  src/client/interface/render.o \
-						  src/client/interface/ui.o \
-						  \
-						  src/history/sqlite/sqlite3.o \
-						  src/history/history.o \
-						  src/history/sqlite_funcs.o \
-						  \
-						  src/misc/blocking_read.o \
+						  src/client/render.o \
+						  src/client/ui.o \
+						  src/client/handlers.o \
+						  src/client/db.o \
 						  src/misc/validate.o \
-						  $(CURSES)
-	rm -f src/client/*.o src/client/interface/*.o
+						  $(CURSES) $(SQLITE) $(ICU)
+	rm -f src/client/*.o
 
 cli_main: 
 	$(CC) $(CFLAGS) -c -o src/client/main.o src/client/main.c 
@@ -37,34 +41,35 @@ cli_network:
 app:
 	$(CC) $(CFLAGS) -c -o src/client/app.o src/client/app.c
 
-# Interface
+handlers:
+	$(CC) $(CFLAGS) -c -o src/client/handlers.o src/client/handlers.c 
+
 ui: 
-	$(CC) $(CFLAGS) -c -o src/client/interface/ui.o src/client/interface/ui.c 
+	$(CC) $(CFLAGS) -c -o src/client/ui.o src/client/ui.c 
 
 render: 
-	$(CC) $(CFLAGS) -c -o src/client/interface/render.o \
-						  src/client/interface/render.c 
+	$(CC) $(CFLAGS) -c -o src/client/render.o src/client/render.c 
+
+cli_db:
+	$(CC) $(CFLAGS) -c -o src/client/db.o src/client/db.c
+
 
 
 # Server
-tests/server: srv_main serv srv_network logger
+server: srv_main serv_app srv_network logger srv_db
 	$(CC) $(CFLAGS) -o $@ src/server/main.o \
 							  src/server/network.o \
 							  src/server/serv.o \
 							  src/server/logger.o \
-							  \
-							  src/history/history.o \
-							  src/history/sqlite/sqlite3.o \
-							  src/history/sqlite_funcs.o \
-							  \
-							  src/misc/blocking_read.o \
-							  src/misc/validate.o
+							  src/server/db.o \
+							  src/misc/validate.o \
+							  $(SQLITE) $(ICU)
 	rm -f src/server/*.o
 
 srv_main: 
 	$(CC) $(CFLAGS) -c -o src/server/main.o src/server/main.c 
 
-serv:
+serv_app:
 	$(CC) $(CFLAGS) -c -o src/server/serv.o src/server/serv.c
 
 srv_network:
@@ -73,30 +78,33 @@ srv_network:
 logger:
 	$(CC) $(CFLAGS) -c -o src/server/logger.o src/server/logger.c
 
+srv_db:
+	$(CC) $(CFLAGS) -c -o src/server/db.o src/server/db.c
 
-# Database 
-history:
-	$(CC) $(CFLAGS) -c -o src/history/history.o \
-						  src/history/history.c
-
-sqlite_funcs:
-	$(CC) $(CFLAGS) -c -o src/history/sqlite_funcs.o src/history/sqlite_funcs.c
+	
+	
+	
 
 sqlite3:
-	if [ ! -f src/history/sqlite/sqlite3.o ]; then \
-		$(CC) -g -c -o src/history/sqlite/sqlite3.o \
-					   src/history/sqlite/sqlite3.c; \
+	if [ ! -f src/sqlite3/sqlite3.o ]; then \
+		$(CC) -g -c -o src/sqlite3/sqlite3.o src/misc/sqlite3.c; \
 	fi
+
+
 
 # misc
 misc:
-	$(CC) $(CFLAGS) -c -o src/misc/blocking_read.o src/misc/blocking_read.c
 	$(CC) $(CFLAGS) -c -o src/misc/validate.o src/misc/validate.c
 
+	
+
 purge: clean
-	rm -r -f tests
+	rm -r -f serv client1 client2
 
 clean:
-	rm -f server client src/client/*.o src/server/*.o src/history/*.o \
-		  src/misc/*.o src/client/interface/*.o tests/client tests/server
+	rm -f client server src/client/*.o src/server/*.o \
+		  src/misc/*.o src/client/*.o \
+		  client1/client client2/client serv/server
 		
+rmdbs:
+	rm -f client1/database.db client2/database.db serv/database.db

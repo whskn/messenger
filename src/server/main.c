@@ -1,13 +1,32 @@
 #include <pthread.h>
+#include <signal.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "serv.h"
 #include "logger.h"
+#include "config.h"
+#include "load_balancer.h"
 
 #define PORT 6969
 
+static int fd;
+static sem_t* mutex; 
+static conn_t** conns;
+
+void int_handler() {
+    serv_close(fd, conns, &mutex);
+    logger(LOG_GOOD, "Bye bye...", false);
+    exit(0);
+}
+
 int main() {
     // Getting ENVs
+    signal(SIGINT, int_handler);
+    signal(SIGKILL, int_handler);
+    signal(SIGTERM, int_handler);
+    signal(SIGABRT, int_handler);
+    signal(SIGPIPE, SIG_IGN);
 
     const int port = PORT;
     // const int port = atoi(getenv("port"));
@@ -19,34 +38,30 @@ int main() {
         return -1;
     }
 
-
-    //opening socket
-    sem_t* mutex;
-    conn_t* conns;
-    int fd = serv_init(&conns, &mutex, PORT);
+    fd = serv_init(&conns, &mutex, PORT);
     if (fd < 0) exit(1);
 
     logger(LOG_GOOD, "Server is up!", false);
-    for (;;) {
-        int id = serv_get_conn(fd, conns, mutex);
-        if (id == NET_CHECK_ERRNO) {
+    while(true) {
+        int user_fd = serv_get_conn(fd);
+        if (user_fd == NET_CHECK_ERRNO) {
             logger(LOG_ERROR, "Failed to harvest new connection", true);
             continue;
-        } 
-        else if (id == NET_AUTH_FAIL) {
-            logger(LOG_ERROR, "Failed to establish connection", true);
-            continue;
-        } 
+        }
 
         logger(LOG_GOOD, "New connection!", false);
 
         pthread_t thread; 
-        MC_arg_t args = {.id = id, .conns = conns, .mutex = mutex};
-        pthread_create(&thread, NULL, &serv_manage_conn, (void*)&args);
+        MC_arg_t args = {.fd = user_fd, .conns = conns, .mutex = mutex};
+        if (pthread_create(&thread, NULL, &serv_manage_conn, (void*)&args)) {
+            logger(LOG_ERROR, "Failed to create a thread", false);
+        }
+        else if (pthread_detach(thread)) {
+            logger(LOG_ERROR, "Failed to detach a thread, terminating it...", false);
+            pthread_cancel(thread);
+        }
     }
-
-    serv_close(fd, &conns, &mutex);
+    
+    serv_close(fd, conns, &mutex);
     return 0;
 }
-
-// TEHDOLG: WAIT FOR THREADS!!!

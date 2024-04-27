@@ -1,8 +1,0 @@
-#define CREATE_TABLE "CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY, data BLOB)"
-#define PULL "SELECT * FROM messages ORDER BY id ASC LIMIT 1;"
-#define INSERT "INSERT INTO messages (data) VALUES (?);"
-#define MIN_ID "SELECT MIN(id) FROM messages;"
-#define DELETE "DELETE FROM messages WHERE id == %d"
-#define TRANSACTION "BEGIN TRANSACTION"
-#define COMMIT "COMMIT"
-#define NEXT_ID "SELECT MIN(id) FROM messages WHERE id > %d;"

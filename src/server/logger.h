@@ -5,4 +5,4 @@
 #define LOG_WARNING 2
 #define LOG_ERROR 3
 
-void logger(const int tag, const char* message, const bool printErrno);
+extern void logger(const int tag, const char* message, const bool printErrno);

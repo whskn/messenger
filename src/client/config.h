@@ -1,0 +1,11 @@
+#ifndef _CONFIG
+#define _CONIFG
+
+#define ADDR_INPUT "ENTER SERVER's IP AND PORT (IP:PORT) :"
+#define USERNAME_INPUT "ENTER YOUR USERNAME:"
+#define PASSWORD_INPUT "ENTER YOUR PASSWORD:"
+
+#define DB_FILENAME "database.db"
+#define WARNING_SLEEP 2
+
+#endif

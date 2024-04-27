@@ -1,10 +1,3 @@
-#include <semaphore.h>
-
-#include "../flags.h"
-#include "../message.h"
-
-#define EMPTY_FD (int)-2
-
 // Error codes
 #define NET_SUCCESS 0
 #define NET_CHECK_ERRNO -1
@@ -13,20 +6,12 @@
 #define NET_CONN_BROKE -4
 #define NET_INVAL_MSG -5
 #define NET_CRITICAL_FAIL -6
+#define NET_ERROR -7
 
-typedef struct {
-    int fd;
-    username_t name;
-} conn_t;
+#define CONN_QUEUE 5
 
-typedef struct {
-    int id; 
-    conn_t* conns;
-    sem_t* mutex;
-} MC_arg_t;
-
-extern int harvestConnection(const int sockFd);
-extern int sendMessage(int fd, msg_t* msg);
-extern int authUser(int fd, conn_t* conns, sem_t* mutex);
-extern int openMainSocket(const int port);
-extern int closeConnection(conn_t* conn, sem_t* mutex);
+extern int net_harvest_conn(const int sockFd);
+extern int net_send(const int fd, void* buffer, const int size);
+extern int net_read(const int fd, void* buffer, const int size);
+extern int net_open_sock(const int port);
+extern int net_close_conn(const int fd);
