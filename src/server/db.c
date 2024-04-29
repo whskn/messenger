@@ -25,12 +25,6 @@ struct DB {
         return HST_ERROR;                                            \
     }
 
-#define LEAVE_T_STMT(sqldb, stmt)                                     \
-    if (sqlite3_exec(sqldb, COMMIT, NULL, NULL, NULL) != SQLITE_OK) { \
-        sqlite3_finalize(stmt);             \
-        return HST_ERROR;                                            \
-    }
-
 
 char* build_filename(const char* dir, const char* filename);
 
@@ -83,6 +77,7 @@ int db_push(struct DB* db, msg_t* msg, const bool sent) {
     sqlite3* sqldb = db->sqldb;
     sqlite3_stmt* stmt;
     int ret;
+    int message_id;
 
     ret = sqlite3_prepare_v2(sqldb, NEW_MSG, -1, &stmt, NULL);
     HANDLE_ERROR_STMT(ret, stmt);
@@ -94,11 +89,18 @@ int db_push(struct DB* db, msg_t* msg, const bool sent) {
     sqlite3_bind_text(stmt, 5, msg->buffer, -1, SQLITE_STATIC);
     sqlite3_bind_int(stmt, 6, (int)sent);
 
+    ENTER_T(sqldb, stmt);
     ret = sqlite3_step(stmt);
-    HANDLE_ERROR_STMT(ret, stmt);
-
+    if (ret != SQLITE_DONE) {
+        LEAVE_T(sqldb);
+        sqlite3_finalize(stmt);
+        return HST_ERROR;
+    }
+    message_id = sqlite3_last_insert_rowid(sqldb);
     sqlite3_finalize(stmt);
-    return HST_SUCCESS;
+    LEAVE_T(sqldb);
+
+    return message_id;
 }
 
 

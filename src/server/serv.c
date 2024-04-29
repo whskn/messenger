@@ -6,89 +6,88 @@
 #include <poll.h>
 
 #include "serv.h"
-
 #include "logger.h"
 #include "../misc/validate.h"
 #include "config.h"
 
-#define EMPTY_FD (int)-2
 
-
-#define HANDLE_SEND_ERROR(ret) \
-    if (ret == NET_CHECK_ERRNO) { \
-        logger(LOG_ERROR, "Failed to send message to user", false); \
-        break; \
-    } \
-    if (ret == NET_CONN_BROKE) { \
-        logger(LOG_INFO, "Connection broke", false); \
-        break; \
-    }
-
-
-// TEHDOLG
-int serv_init(conn_t*** conns, sem_t** mutex, const int port) {
+// VV
+int serv_init(conn_t*** conns, mtx_t** page_mtx, const int port) {
     // allocating mem for connections
+    conn_t** _conns;
+    mtx_t* _page_mtx;
+    
+    _conns = (conn_t**)calloc(MAX_CONNECTIONS, sizeof(conn_t*));
+    _page_mtx = (mtx_t*)malloc(sizeof(mtx_t));
 
-    conn_t** _conns = (conn_t**)calloc(MAX_CONNECTIONS, sizeof(conn_t*));
-    if (_conns == NULL) {
-        logger(LOG_ERROR, "Problem with calloc", true);
-        return NET_CRITICAL_FAIL;
-    }
-
-    // getting a mutex
-    sem_t* _mutex = (sem_t*)calloc(1, sizeof(sem_t));
-    if (_mutex == NULL) {
+    // getting a page-mutex
+    if (pthread_mutex_init(_page_mtx, NULL)) {
         free(_conns);
-        logger(LOG_ERROR, "Problem with calloc", true);
-        return NET_CRITICAL_FAIL;
-    }
-    if (sem_init(_mutex, 0, 1) < 0) {
-        free(_conns);
-        free(_mutex);
-        logger(LOG_ERROR, "Problem with sem_init", true);
+        free(_page_mtx);
+        logger(LOG_ERROR, "Failed to create a mutex", false);
         return NET_CRITICAL_FAIL;
     }
 
     int fd = net_open_sock(port);
     if (fd < 0) {
         free(_conns);
-        free(_mutex);
-        logger(LOG_ERROR, "Problem opening socket", true);
+        free(_page_mtx);
+        logger(LOG_ERROR, "Failed to open a socket", true);
         return NET_CRITICAL_FAIL;
     }
 
     *conns = _conns;
-    *mutex = _mutex;
+    *page_mtx = _page_mtx;
 
     return fd;
 }
 
-int serv_close(int fd, conn_t** conns, sem_t** mutex) {
-    sem_destroy(*mutex);
+// VV
+int serv_close(int fd, conn_t** conns, mtx_t* page_mtx) {
+    conn_t* conn;
+
+    pthread_mutex_lock(page_mtx);
     for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        if (conns[i]) free(conns[i]);
+        conn = conns[i];
+        conns[i] = NULL;
+
+        if (conn) {
+            if (pthread_cancel(conn->thread_id)) {
+                logger(LOG_ERROR, "Failed to cancel thread: ", true);
+            }
+            if (net_close_conn(conn->fd) != NET_SUCCESS) {
+                logger(LOG_ERROR, "Error closing socket of user connection: ", true);
+            }
+            if (db_close(conn->db) != HST_SUCCESS) {
+                logger(LOG_ERROR, "Error while closing db", true);
+            }
+            // do not destroy mutex, cause if it's locked, this op can lead to unexpectes consequences
+            if (conn->buffer) free(conn->buffer);
+        }
     }
-    free(*conns);
-    free(*mutex);
-    close(fd);
-    // close all fd's
-    
-    *mutex = NULL;
-    *conns = NULL;
+    pthread_mutex_unlock(page_mtx);
+    pthread_mutex_destroy(page_mtx);
+    free(page_mtx);
+
+    free(conns);
+
+    net_close_conn(fd);
 
     return NET_SUCCESS;
 }
 
 
-
 // -1 - no room, -2 - user online
-int put_in_table(conn_t** conns, conn_t* my_conn) {
+// VV
+int put_in_table(conn_t** conns, conn_t* my_conn, mtx_t* page_mtx) {
     int id = -1;
 
+    pthread_mutex_lock(page_mtx);
     for (int i = 0; i < MAX_CONNECTIONS; i++) {
         if (conns[i]) {
             if (conns[i]->user_id == my_conn->user_id){
                 if (id >= 0) conns[id] = NULL;
+                pthread_mutex_unlock(page_mtx);
                 return -2;
             }
         } else if (id < 0) {
@@ -96,10 +95,23 @@ int put_in_table(conn_t** conns, conn_t* my_conn) {
             id = i;
         }
     }
+    pthread_mutex_unlock(page_mtx);
 
     return id;
 }
 
+int lock_n_send(conn_t* conn, void* buffer, const int size) {
+    int ret;
+
+    pthread_mutex_lock(&conn->conn_mtx);
+    ret = net_send(conn->fd, buffer, size);
+    pthread_mutex_unlock(&conn->conn_mtx);
+    
+    return ret;
+}
+
+
+// --
 int auth_resp(const int fd, const int hs_code, const int user_id) {
     auth_res_t resp = {.cc = CC_AUTH, .hs_code = hs_code, .user_id = user_id};
 
@@ -117,6 +129,7 @@ int auth_resp(const int fd, const int hs_code, const int user_id) {
 }
 
 // -1 on fail
+// --
 int blocking_read(conn_t* my_conn) {
     int ret;
     struct pollfd fds = {.fd = my_conn->fd, .events = POLLIN, .revents = 0};
@@ -131,7 +144,6 @@ int blocking_read(conn_t* my_conn) {
         return -1;
     }
 
-    // reading username
     ret = net_read(my_conn->fd, my_conn->buffer, MAX_PACKET_SIZE);
     if (ret == NET_ERROR) {
         logger(LOG_ERROR, "Error while polling casually", false);
@@ -149,7 +161,8 @@ int blocking_read(conn_t* my_conn) {
     return ret;
 }
 
-int auth_user(conn_t* my_conn, conn_t** conns) {
+// --
+int auth_user(conn_t* my_conn, conn_t** conns, mtx_t* page_mtx) {
     auth_req_t* auth_msg = my_conn->buffer;
     user_t user;
     int ret;
@@ -188,7 +201,8 @@ int auth_user(conn_t* my_conn, conn_t** conns) {
 
     // TEHDOLG password check
 
-    ret = put_in_table(conns, my_conn);
+    pthread_mutex_lock(&my_conn->conn_mtx);
+    ret = put_in_table(conns, my_conn, page_mtx);
     if (ret == -1) {
         auth_resp(my_conn->fd, HS_MAX_CONN, 0);
         return NET_AUTH_FAIL;
@@ -203,21 +217,23 @@ int auth_user(conn_t* my_conn, conn_t** conns) {
         conns[id] = NULL;
         return NET_AUTH_FAIL;
     }
+    pthread_mutex_unlock(&my_conn->conn_mtx);
 
     return id;
 }
 
-int auth_handler(conn_t* my_conn, conn_t** conns) {
+// VV
+int auth_handler(conn_t* my_conn, conn_t** conns, mtx_t* page_mtx) {
     int read_bytes = blocking_read(my_conn);
     if (read_bytes != sizeof(auth_req_t)) {
         logger(LOG_ERROR, "Invalid auth request format", false);
         return NET_AUTH_FAIL;
     }
 
-    return auth_user(my_conn, conns);
+    return auth_user(my_conn, conns, page_mtx);
 }
 
-
+// --
 int serv_get_conn(int fd) {
     int user_fd;
 
@@ -231,23 +247,24 @@ int serv_get_conn(int fd) {
 }
 
 
-int find_user(const int user_id, conn_t** conns, sem_t* mutex) {
-    int fd = -1;
+// VV
+conn_t* find_user(const int user_id, conn_t** conns, mtx_t* page_mtx) {
+    conn_t* conn_ptr = NULL;
 
-    sem_wait(mutex);
+    pthread_mutex_lock(page_mtx);
     for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        if (!conns[i]) continue;
-        if (user_id == conns[i]->user_id) {
-            fd = conns[i]->fd;
+        if (conns[i] && user_id == conns[i]->user_id) {
+            pthread_mutex_lock(&conns[i]->conn_mtx);
+            conn_ptr = conns[i];
             break;
         }
     }
-    sem_post(mutex);
+    pthread_mutex_unlock(page_mtx);
 
-    return fd;
+    return conn_ptr;
 }
 
-
+// --
 int flush_pending(conn_t* my_conn) {
     msg_t* msg = (msg_t*)calloc(1, sizeof(msg_t));
     int ret;
@@ -271,8 +288,15 @@ int flush_pending(conn_t* my_conn) {
         }
 
         msg->cc = CC_MSG;
-        ret = net_send(my_conn->fd, msg, msg_size(msg));
-        HANDLE_SEND_ERROR(ret);
+        ret = lock_n_send(my_conn, msg, msg_size(msg));
+        if (ret == NET_CHECK_ERRNO) {
+            logger(LOG_ERROR, "Failed to send message to user", false);
+            break;
+        }
+        if (ret == NET_CONN_BROKE) {
+            logger(LOG_INFO, "Connection broke", false);
+            break;
+        }
 
         ret = db_mark_as_sent(my_conn->db, message_id);
         if (ret != HST_SUCCESS) {
@@ -284,12 +308,13 @@ int flush_pending(conn_t* my_conn) {
     return NET_SUCCESS;
 }
 
-
-int msg_handler(conn_t* my_conn, conn_t** conns, sem_t* mutex, 
+// VV
+int msg_handler(conn_t* my_conn, conn_t** conns, mtx_t* page_mtx, 
                 const int readed_size) {
     int ret;
     msg_t* msg = my_conn->buffer;
     bool sent = false;
+    conn_t* reciever;
 
     // checking if recieved message is valid
     if (!msg_is_valid(msg, readed_size)) {
@@ -302,13 +327,12 @@ int msg_handler(conn_t* my_conn, conn_t** conns, sem_t* mutex,
     }
 
     // finding fd of the reciever
-    int to_fd = find_user(msg->to_id, conns, mutex);
+    reciever = find_user(msg->to_id, conns, page_mtx);      // MUTEX DOWN
 
     // sending the message
-    if (to_fd > -1) {
-        // we suppose that readed_size is the right size of msg, since 
-        // msg_is_valid() would detect if violated
-        ret = net_send(to_fd, msg, msg_size(msg));
+    if (reciever) {
+        ret = net_send(reciever->fd, msg, msg_size(msg));   // MUTEX UP 
+        pthread_mutex_unlock(&reciever->conn_mtx);
         if (ret == NET_SUCCESS) {
             sent = true;
         }
@@ -319,8 +343,8 @@ int msg_handler(conn_t* my_conn, conn_t** conns, sem_t* mutex,
     } 
 
     ret = db_push(my_conn->db, my_conn->buffer, sent);
-    if (ret != HST_SUCCESS) {
-        logger(LOG_ERROR, "Failed to push message to user's queue", false);
+    if (ret < 0) {
+        logger(LOG_ERROR, "Failed to push message db", false);
         return -1;
     }
 
@@ -335,18 +359,18 @@ int user_rqs_handler(conn_t* conn) {
                       .exists = false, 
                       .user_id = -1};
     if (!name_is_valid(req->username)) {
-        net_send(conn->fd, &rsp, sizeof(user_rsp_t));
+        lock_n_send(conn, &rsp, sizeof(user_rsp_t));
         return 0;
     }
 
     ret = db_get_user(conn->db, req->username, &user);
     if (ret == HST_NOUSER) {
-        net_send(conn->fd, &rsp, sizeof(user_rsp_t));
+        lock_n_send(conn, &rsp, sizeof(user_rsp_t));
         return 0;
     }
     else if (ret != HST_SUCCESS) {
         logger(LOG_ERROR, "Failed to pull user from the database", false);
-        net_send(conn->fd, &rsp, sizeof(user_rsp_t));
+        lock_n_send(conn, &rsp, sizeof(user_rsp_t));
         return -1;
     }
 
@@ -354,7 +378,7 @@ int user_rqs_handler(conn_t* conn) {
     rsp.exists = true;
     memcpy(rsp.username, user.username, sizeof(username_t));
 
-    ret = net_send(conn->fd, &rsp, sizeof(user_rsp_t));
+    ret = lock_n_send(conn, &rsp, sizeof(user_rsp_t));
     if (ret == NET_CHECK_ERRNO) {
         logger(LOG_ERROR, "Failed to send: ", true);
         return -1;
@@ -363,14 +387,15 @@ int user_rqs_handler(conn_t* conn) {
     return 0;
 }
 
-int responder(conn_t* my_conn, conn_t** conns, sem_t* mutex) {
+// --
+int responder(conn_t* my_conn, conn_t** conns, mtx_t* page_mutex) {
     int read_size = blocking_read(my_conn);
     if (read_size < (int)sizeof(int)) return -1;
 
     switch (*(int*)my_conn->buffer)
     {
     case CC_MSG:
-        return msg_handler(my_conn, conns, mutex, read_size);
+        return msg_handler(my_conn, conns, page_mutex, read_size);
 
     case CC_USER_RQS:
         return user_rqs_handler(my_conn);
@@ -382,29 +407,39 @@ int responder(conn_t* my_conn, conn_t** conns, sem_t* mutex) {
     return 0;
 }
 
-int close_conn(conn_t* conn, sem_t* mutex) {
-    if (mutex) sem_wait(mutex);
-
-    if (net_close_conn(conn->fd) != NET_SUCCESS) {
-        logger(LOG_ERROR, "Error closing socker of user connection", true);
+// use only if conn is not in the page
+// VV
+int close_conn(conn_t* conn) {
+    if (!pthread_mutex_trylock(&conn->conn_mtx)) {
+        pthread_mutex_unlock(&conn->conn_mtx);
+        pthread_mutex_destroy(&conn->conn_mtx);
+    } else {
+        logger(LOG_ERROR, "Mutex of the connection is locked: ", true);
     }
 
+    if (net_close_conn(conn->fd) != NET_SUCCESS) {
+        logger(LOG_ERROR, "Error closing socket of user connection: ", true);
+    }
     if (db_close(conn->db) != HST_SUCCESS) {
         logger(LOG_ERROR, "Error while closing db", true);
     }
 
     if (conn->buffer) free(conn->buffer);
-    free(conn);
 
-    if (mutex) sem_post(mutex);
+    free(conn);
     return 0;
 }
 
-int remove_conn(const int conn_id, conn_t** conns, sem_t* mutex) {
-    sem_wait(mutex);
-    close_conn(conns[conn_id], NULL);
+// only callable by thread whose connection is to be deleted
+// VV
+int remove_conn(const int conn_id, conn_t** conns, mtx_t* page_mtx) {
+    conn_t* to_close = conns[conn_id];
+
+    pthread_mutex_lock(page_mtx);
     conns[conn_id] = NULL;
-    sem_post(mutex);
+    pthread_mutex_unlock(page_mtx);
+
+    close_conn(to_close);
 
     return 0;
 }
@@ -415,36 +450,38 @@ void* serv_manage_conn(void* void_args) {
 
     // retreiving arguments
     conn_t** conns = ((MC_arg_t*)void_args)->conns;
-    sem_t* mutex   = ((MC_arg_t*)void_args)->mutex;
+    mtx_t* page_mtx   = ((MC_arg_t*)void_args)->page_mtx;
     my_conn->fd    = ((MC_arg_t*)void_args)->fd;
+    free(void_args);
+    pthread_mutex_init(&my_conn->conn_mtx, NULL);
 
     int ret;
 
     ret = db_open(NULL, DB_FILENAME, &my_conn->db);
     if (ret != HST_SUCCESS) {
         logger(LOG_ERROR, "Cannot open db", false);
-        close_conn(my_conn, mutex);
+        close_conn(my_conn);
         return NULL;
     }
 
     my_conn->buffer = (void*)malloc(sizeof(msg_t));
 
-    my_conn_id = auth_handler(my_conn, conns);
+    my_conn_id = auth_handler(my_conn, conns, page_mtx);
     if (my_conn_id < 0) {
-        close_conn(my_conn, mutex);
+        close_conn(my_conn);
 
         return NULL;
     }
 
     // flush all pending messages to the connected user
     flush_pending(my_conn);
+    pthread_mutex_unlock(&my_conn->conn_mtx);
 
     while(true) {
-        if (responder(my_conn, conns, mutex) < 0) break;
+        if (responder(my_conn, conns, page_mtx) < 0) break;
     }
 
-    remove_conn(my_conn_id, conns, mutex);
+    remove_conn(my_conn_id, conns, page_mtx);
     return NULL;
 }
 
-// TEHDOLG set up proper mutual exclusion

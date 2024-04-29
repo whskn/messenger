@@ -6,16 +6,15 @@
 #include "serv.h"
 #include "logger.h"
 #include "config.h"
-#include "load_balancer.h"
 
 #define PORT 6969
 
-static int fd;
-static sem_t* mutex; 
-static conn_t** conns;
+int fd;
+mtx_t* page_mtx; 
+conn_t** conns;
 
 void int_handler() {
-    serv_close(fd, conns, &mutex);
+    serv_close(fd, conns, page_mtx);
     logger(LOG_GOOD, "Bye bye...", false);
     exit(0);
 }
@@ -38,7 +37,7 @@ int main() {
         return -1;
     }
 
-    fd = serv_init(&conns, &mutex, PORT);
+    fd = serv_init(&conns, &page_mtx, PORT);
     if (fd < 0) exit(1);
 
     logger(LOG_GOOD, "Server is up!", false);
@@ -52,8 +51,12 @@ int main() {
         logger(LOG_GOOD, "New connection!", false);
 
         pthread_t thread; 
-        MC_arg_t args = {.fd = user_fd, .conns = conns, .mutex = mutex};
-        if (pthread_create(&thread, NULL, &serv_manage_conn, (void*)&args)) {
+        MC_arg_t* args = (MC_arg_t*)malloc(sizeof(MC_arg_t));
+        args->fd = user_fd;
+        args->conns = conns;
+        args->page_mtx = page_mtx;
+
+        if (pthread_create(&thread, NULL, &serv_manage_conn, (void*)args)) {
             logger(LOG_ERROR, "Failed to create a thread", false);
         }
         else if (pthread_detach(thread)) {
@@ -62,6 +65,6 @@ int main() {
         }
     }
     
-    serv_close(fd, conns, &mutex);
+    serv_close(fd, conns, page_mtx);
     return 0;
 }
