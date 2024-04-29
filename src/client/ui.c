@@ -40,6 +40,7 @@ ui_t* ui_init(chat_t* chats, const int n_of_chats) {
     init_pair(CLR_CHAT_SELECTOR, FONT_CHAT_SELECTOR, BG_CHAT_SELECTOR);
     init_pair(CLR_BADNAME,       FONT_BADNAME,       BG_BADNAME);
     init_pair(CLR_WIN_WARN,      FONT_WIN_WARN,      BG_WIN_WARN);
+    init_pair(CLR_GRAYED_OUT,    FONT_GRAYED_OUT,    BG_GRAYED_OUT);
 
     return ui_data;
 }
@@ -85,21 +86,95 @@ void ui_render_window(ui_t* ui_data) {
 }
 
 
-bool default_filter(char a __attribute__((unused))) {
+bool default_filter(const int a __attribute__((unused))) {
     return true;
 }
 
-void ui_get_input(ui_t* ui_data, char* data, int size, char* printout, 
-                  bool (*_filter)(char), const bool hide_chars) {
-                    // TEHDOLG hide chars when variable is true
-                    // TEHDOLG check name after ENTER is pressed (empty names somehow aren't detected)
-                    // TEHDOLG name_filter, passwd_filter doesn't work (they pass unwanted chars)
+int ui_login(ui_t* ui_data, 
+             username_t* username,
+             password_t* password, 
+             bool (*filter_0)(const int), 
+             bool (*filter_1)(const int)) {
+    char* buff_0 = (char*)calloc(1, sizeof(username_t));
+    char* buff_1 = (char*)calloc(1, sizeof(password_t));
+    
+    int len_0 = 0;
+    int len_1 = 0;
+    
+    int button = 0;
+    int field = 0;
+
+    while(true) {
+        if (!check_win_size(ui_data)) {
+            while (getch() != KEY_RESIZE);
+            continue;
+        }
+
+        clear();
+        render_login_win(ui_data, buff_0, len_0, buff_1, len_1, button, field);
+
+        int ch = getch();
+        switch (ch) 
+        {
+        case '\n':
+            memcpy(username, buff_0, sizeof(username_t));
+            memcpy(password, buff_1, sizeof(password_t));
+            free(buff_0);
+            free(buff_1);
+            return button;
+
+        case KEY_RESIZE:
+            break;
+
+        case KEY_BACKSPACE:
+            if      (field == 0 && len_0) buff_0[--len_0] = '\0';
+            else if (field == 1 && len_1) buff_1[--len_1] = '\0';
+            break;
+
+        case KEY_UP:
+            field = 0;
+            break;
+
+        case KEY_DOWN:
+            field = 1;
+            break;
+
+        case KEY_LEFT:
+            button = 0;
+            break;
+
+        case KEY_RIGHT:
+            button = 1;
+            break;
+
+        default:
+            if (field == 0 && len_0 < USERNAME_LEN - 1 && filter_0(ch)) {
+                buff_0[len_0++] = (char)ch;
+                buff_0[len_0] = '\0';
+            } else if (field == 1 && len_1 < PASSWORD_LEN - 1 && filter_1(ch)) {
+                buff_1[len_1++] = (char)ch;
+                buff_1[len_1] = '\0';
+            }
+            break;
+        }
+    }
+
+    free(buff_0);
+    free(buff_1);
+    return button;
+}
+
+void ui_get_input(ui_t* ui_data, char* data, int size, char* printout,
+                  bool (*_filter)(const int)) {
+    // TEHDOLG hide chars when variable is true
+    // TEHDOLG check name after ENTER is pressed (empty names somehow aren't detected)
+    // TEHDOLG name_filter, passwd_filter doesn't work (they pass unwanted chars)
     char* temp_buff = (char*)malloc(size * sizeof(char));
     temp_buff[0] = '\0';
     int printout_len = strlen(printout);
     int len = 0;
     bool badname = false;
-    bool (*filter)(char) = _filter ? _filter : default_filter;
+    bool (*filter)(const int) = _filter ? _filter : default_filter;
 
     while(true) {
         if (!check_win_size(ui_data)) {

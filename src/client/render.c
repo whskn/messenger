@@ -27,6 +27,55 @@ void render_size_warning(ui_t* ui_data) {
     attroff(COLOR_PAIR(CLR_WIN_WARN));
 }
 
+void render_login_win(ui_t* ui_data, 
+                      const char* input_1, 
+                      const int len_input_1,
+                      const char* input_2, 
+                      const int len_input_2,
+                      const int button,
+                      const int field) {
+    const int width = getmaxx(ui_data->window);
+    const int height = getmaxy(ui_data->window);
+
+    const int max_line_len = (len_input_1 > len_input_2 
+                             ? len_input_1 
+                             : len_input_2)
+                             + sizeof(USERNAME) - 1;
+
+    const int margin_top = (height - 7) / 2;
+    const int margin_left = (width - max_line_len) / 2;
+
+    char* stars = (char*)malloc(len_input_2 + 1);
+    memset(stars, '*', len_input_2);
+    stars[len_input_2] = '\0';
+
+    mvprintw(margin_top, margin_left, USERNAME);
+    printw("%s", input_1);
+    mvprintw(margin_top + 2, margin_left, PASSWORD);
+    printw("%s", stars);
+
+    if (button == 0) attron(COLOR_PAIR(CLR_HEADER));
+    mvprintw(margin_top + 4, margin_left, "%s", LOGIN);
+    if (button == 0) attroff(COLOR_PAIR(CLR_HEADER));
+
+    if (button == 1) attron(COLOR_PAIR(CLR_HEADER));
+    mvprintw(margin_top + 4, margin_left + sizeof(LOGIN), "%s", REGISTER);
+    if (button == 1) attroff(COLOR_PAIR(CLR_HEADER));
+
+    attron(COLOR_PAIR(CLR_GRAYED_OUT));
+    mvprintw(margin_top + 6, (width - sizeof(INSTRUCTION)) / 2, "%s", INSTRUCTION);
+    attroff(COLOR_PAIR(CLR_GRAYED_OUT));
+
+    if (field == 0) {
+        move(margin_top, margin_left + sizeof(USERNAME) + len_input_1 - 1);
+    }
+    else if (field == 1) {
+        move(margin_top + 2, margin_left + sizeof(PASSWORD) + len_input_2 - 1);
+    }
+
+    free(stars);
+}
+
 void render_get_input(ui_t* ui_data, char* printout, int printout_len,
                       char* input, int input_len, bool badname) {
     int width = getmaxx(ui_data->window);
@@ -76,12 +125,6 @@ void render_empty_side_bar(ui_t* ui_data) {
              col + (SIDE_BAR_WIDTH(ui_data) - (sizeof(CHAT_ADD_HINT) - 1)) / 2, 
              CHAT_ADD_HINT);
 }
-
-// static int strnlen(const char* string, const int limit) {
-//     int len = 0;
-//     for(; string[len] && len < limit; len++);
-//     return len;
-// }
 
 
 void render_side_bar(ui_t* ui_data) {

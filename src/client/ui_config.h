@@ -34,6 +34,13 @@
 #define CHAT_ADD_HINT       "CTRL + N TO ADD ONE"
 #define CHOOSE_CHAT         "Choose a chat to start messaging"
 
+// Login window
+#define USERNAME            "Username: "
+#define PASSWORD            "Password: "
+#define LOGIN               "LOGIN"
+#define REGISTER            "REGISTER"
+#define INSTRUCTION         "Usage: UP-DOWN LEFT-RIGHT keys"
+
 #define ADD_YOURSELF        "You cannot have a chat with yourself"
 #define NO_SUCH_USER        "Can't find a user with such name"
 #define SERVER_ERROR        "Can't find the user: server error"
@@ -65,5 +72,8 @@
 
 #define BG_BADNAME          0
 #define FONT_BADNAME        1
+
+#define BG_GRAYED_OUT       0
+#define FONT_GRAYED_OUT     8
 
 #endif

@@ -45,5 +45,6 @@ typedef struct {
 #define CLR_CHAT_SELECTOR   5
 #define CLR_BADNAME         6
 #define CLR_WIN_WARN        7
+#define CLR_GRAYED_OUT      8
 
 #endif

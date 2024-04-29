@@ -13,11 +13,13 @@ extern void ui_remove_chat(ui_t* ui_data, chat_t* chat);
 extern void ui_append_message(ui_t* ui_data, msg_t* msg);
 extern void ui_clear_buffer(ui_t* ui_data);
 extern void ui_get_input(ui_t* ui_data, char* data, int size, char* printout, 
-                         bool (*_filter)(char), const bool hide_chars);
+                         bool (*filter)(const int));
 extern void ui_clear_history(ui_t* ui_data);
 extern void ui_curr_chat_name(ui_t* ui_data, username_t username);
 extern void ui_switch_chat(ui_t* ui_data, const int step);
 extern void ui_set_my_id(ui_t* ui_data, const int my_id);
 extern void ui_warning(ui_t* ui_data, const char* text);
 extern void ui_flush_stdin();
+extern int ui_login(ui_t* ui_data, username_t* username, password_t* password, 
+                    bool (*filter_0)(const int), bool (*filter_1)(const int));
 extern char* loading_ani();

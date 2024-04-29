@@ -42,7 +42,7 @@ bool msg_is_valid(void* msg_void_ptr, const int size) {
     return true;
 }
 
-bool passwd_filter(char a) {
+bool passwd_filter(const int a) {
     if (!(a >= 48 && a <= 57) && 
         !(a >= 65 && a <= 90) &&
         !(a >= 97 && a <= 122) && a != '\0') {
@@ -60,7 +60,7 @@ bool passwd_is_valid(password_t p) {
     return true;
 }
 
-bool name_filter(char a) {
+bool name_filter(const int a) {
     if (!(a >= 48 && a <= 57) && 
         !(a >= 65 && a <= 90) &&
         !(a >= 97 && a <= 122)) {
@@ -76,9 +76,4 @@ bool name_is_valid(username_t name) {
     }
     if (i < 1 || name[i]) return false;
     return true;
-}
-
-bool address_filter(char a) {
-    if ((a >= 48 || a <= 57) || a == '.' || a == ':') return true;
-    return false;
 }

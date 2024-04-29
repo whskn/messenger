@@ -16,7 +16,8 @@
 bool check_addr(const char* ip, const char* port);
 
 int main(int argc, char* argv[]) {
-    username_t my_name, my_passwd;
+    username_t my_passwd = {0};
+    username_t my_name = {0};
     ui_t* ui_data = NULL;
     chat_t* chats = NULL;
     db_t* db = NULL;
@@ -26,6 +27,7 @@ int main(int argc, char* argv[]) {
     int user_id;
     char* ip;
     int port;
+    bool new_acc;
 
     if (argc < 3) {
         printf("Usage: client [server IP] [server PORT]\n");
@@ -52,16 +54,13 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
     buffer = (void*)calloc(1, MAX_PACKET_SIZE);
-    ui_get_input(ui_data, my_name, sizeof(username_t), USERNAME_INPUT, 
-                 name_filter, false);
-    ui_get_input(ui_data, my_passwd, sizeof(password_t), PASSWORD_INPUT, 
-                 passwd_filter, true);
+    new_acc = (bool)ui_login(ui_data, &my_name, &my_passwd, name_filter, 
+                             passwd_filter);
 
     // loop that re-tries to connect when conn breaks
+    ui_warning(ui_data, loading_ani());
     while (true) {
-        ui_warning(ui_data, loading_ani());
-
-        user_id = net_connect(&c, ip, port, my_name, my_passwd, false);
+        user_id = net_connect(&c, ip, port, my_name, my_passwd, new_acc);
         if (user_id == NET_CHECK_ERRNO  ||
             user_id == NET_SERVER_ERROR ||
             user_id == NET_SERVER_OVERLOADED ||
