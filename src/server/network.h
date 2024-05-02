@@ -11,7 +11,7 @@
 #define CONN_QUEUE 5
 
 extern int net_harvest_conn(const int sockFd);
-extern int net_send(const int fd, void* buffer, const int size);
-extern int net_read(const int fd, void* buffer, const int size);
+extern int net_send(const int fd, void *buffer, const int size);
+extern int net_read(const int fd, void *buffer, const int size);
 extern int net_open_sock(const int port);
 extern int net_close_conn(const int fd);

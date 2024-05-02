@@ -1,8 +1,0 @@
-FROM ubuntu
-
-COPY client /usr/bin/
-
-ENV ip = "127.0.0.1"
-ENV port = "6969"
-
-ENTRYPOINT [ "client" ]

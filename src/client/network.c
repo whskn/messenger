@@ -16,69 +16,77 @@
 #include "network.h"
 #include "../misc/validate.h"
 
-
 /**
  * Creates a socket and tries to connect to a server.
- * 
+ *
  * @param ip ip address of the server
  * @param port port of the server
- * 
+ *
  * @return connection file descriptor or error code
-*/
-static int try_connect(const char* ip, const int port) {
+ */
+static int try_connect(const char *ip, const int port)
+{
     struct sockaddr_in address;
     struct pollfd fds;
     int err;
     int fd;
 
     fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
-    if (fd < 0) {
+    if (fd < 0)
+    {
         return NET_CHECK_ERRNO;
     }
 
-    bzero(&address, sizeof(address)); 
+    bzero(&address, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
     inet_pton(AF_INET, ip, &address.sin_addr);
-    
-    err = connect(fd, (struct sockaddr*)&address, sizeof(address));
-    if (err < 0 && errno != EINPROGRESS) {
+
+    err = connect(fd, (struct sockaddr *)&address, sizeof(address));
+    if (err < 0 && errno != EINPROGRESS)
+    {
         close(fd);
         return NET_CHECK_ERRNO;
-    } 
+    }
 
     fds.fd = fd;
     fds.events = POLLOUT;
 
     err = poll(&fds, 1, CONNECTION_TIMEOUT);
-    if (err == -1) {
+    if (err == -1)
+    {
         close(fd);
         return NET_CHECK_ERRNO;
-    } else if (err == 0) {
+    }
+    else if (err == 0)
+    {
         close(fd);
         return NET_TIMEOUT;
-    } else if (!(fds.revents & POLLOUT)) {
+    }
+    else if (!(fds.revents & POLLOUT))
+    {
         close(fd);
         return NET_SERVER_ERROR;
     }
-    
+
     return fd;
 }
 
 /**
  * Authenticates user on the server.
- * 
+ *
  * @parem fd file descriptor of the tcp connection
  * @param username user's nickname
- * 
+ *
  * @return error codes
-*/
+ */
 static int auth(int fd, username_t username, password_t password,
-                const bool new_account) {
+                const bool new_account)
+{
     int ret;
     const int auth_type = new_account ? AUTH_REGISTER : AUTH_LOGIN;
     struct pollfd fds = {.fd = fd, .events = POLLIN, .revents = 0};
-    auth_res_t rsp; 
+    auth_res_t rsp;
     auth_req_t req;
 
     req.cc = CC_AUTH;
@@ -89,18 +97,27 @@ static int auth(int fd, username_t username, password_t password,
     ret = net_send(fd, &req, sizeof(auth_req_t));
 
     ret = poll(&fds, (nfds_t)1, AUTH_TIMEOUT);
-    if (ret < 0) return NET_SERVER_ERROR;
+    if (ret < 0)
+        return NET_SERVER_ERROR;
 
     ret = net_read(fd, &rsp, sizeof(auth_res_t));
-    if (ret < 0) return NET_SERVER_ERROR;
-    
-    switch (rsp.hs_code) {
-    case HS_SUCC:           return rsp.user_id;
-    case HS_MAX_CONN:       return NET_SERVER_OVERLOADED;
-    case HS_INVAL_NAME:     return NET_INVALID_NAME;
-    case HS_USER_EXISTS:    return NET_USER_EXISTS;
-    case HS_GENERIC_ERROR:  return NET_SERVER_ERROR;
-    case HS_NO_USER:        return NET_NO_USER;
+    if (ret < 0)
+        return NET_SERVER_ERROR;
+
+    switch (rsp.hs_code)
+    {
+    case HS_SUCC:
+        return rsp.user_id;
+    case HS_MAX_CONN:
+        return NET_SERVER_OVERLOADED;
+    case HS_INVAL_NAME:
+        return NET_INVALID_NAME;
+    case HS_USER_EXISTS:
+        return NET_USER_EXISTS;
+    case HS_GENERIC_ERROR:
+        return NET_SERVER_ERROR;
+    case HS_NO_USER:
+        return NET_NO_USER;
     }
 
     return NET_SERVER_ERROR;
@@ -108,24 +125,27 @@ static int auth(int fd, username_t username, password_t password,
 
 /**
  * Gathers try_connect() and auth() together for cozy high-lever use.
- * 
+ *
  * @param c connection
  * @param ip ip of the server to connect to
  * @param port port of the server to connect to
- * 
+ *
  * @return error codes
-*/
-int net_connect(connection_t* c, const char* ip, const int port, 
-                username_t my_name, password_t password, const bool new_acc) {
+ */
+int net_connect(connection_t *c, const char *ip, const int port,
+                username_t my_name, password_t password, const bool new_acc)
+{
     int fd, ret, user_id;
 
     fd = try_connect(ip, port);
-    if (fd < 0) {
+    if (fd < 0)
+    {
         return NET_CHECK_ERRNO;
     }
 
     ret = auth(fd, my_name, password, new_acc);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         close(fd);
         return ret;
     }
@@ -138,38 +158,42 @@ int net_connect(connection_t* c, const char* ip, const int port,
     return user_id;
 }
 
-
-int net_user_req(connection_t* c, username_t name) {
+int net_user_req(connection_t *c, username_t name)
+{
     user_req_t req;
     req.cc = CC_USER_RQS;
     memcpy(req.username, name, sizeof(username_t));
 
-    if (net_send(c->fd, &req, sizeof(user_req_t)) < 0) {
+    if (net_send(c->fd, &req, sizeof(user_req_t)) < 0)
+    {
         return NET_CHECK_ERRNO;
     }
-    
+
     return NET_SUCCESS;
 }
 
 /**
  * Closes connection with a server
- * 
+ *
  * @param c the connection to close
  * @return error codes
-*/
-int net_close_conn(connection_t* c) {
+ */
+int net_close_conn(connection_t *c)
+{
     return !close(c->fd) ? NET_SUCCESS : NET_CHECK_ERRNO;
 }
 
-
-int net_send(const int fd, void* buffer, const int size) {
+int net_send(const int fd, void *buffer, const int size)
+{
     int ret;
 
     ret = write(fd, &size, sizeof(int));
-    if (ret != sizeof(int)) return NET_ERROR;
+    if (ret != sizeof(int))
+        return NET_ERROR;
 
     ret = write(fd, buffer, size);
-    if (ret < 0) return NET_CHECK_ERRNO;
+    if (ret < 0)
+        return NET_CHECK_ERRNO;
 
     return ret;
 }
@@ -180,22 +204,23 @@ int net_send(const int fd, void* buffer, const int size) {
 //     return len;
 // }
 
-
 /**
  * Send message from the buffer. Buffer can point to buffer of msg of connection
  * so that function won't copy the message. This can help avoid redunduncy.
- * 
- * @param c connection 
+ *
+ * @param c connection
  * @param msg message struct
  * @param buffer message's buffer (better be pointed at c->msg->buffer)
- * 
+ *
  * @return size of message sent on success, error code otherwise
-*/
-int net_send_msg(connection_t* c, 
-                 msg_t* msg, 
-                 char* buffer, 
-                 const int to_id) {
-    if (buffer != msg->buffer) {
+ */
+int net_send_msg(connection_t *c,
+                 msg_t *msg,
+                 char *buffer,
+                 const int to_id)
+{
+    if (buffer != msg->buffer)
+    {
         strncpy(msg->buffer, buffer, MAX_MESSAGE_LEN);
     }
 
@@ -207,51 +232,61 @@ int net_send_msg(connection_t* c,
     msg->timestamp = time(NULL);
 
     int msg_size = msg_size(msg);
-    if (!msg_is_valid((void*)msg, msg_size)) {
+    if (!msg_is_valid((void *)msg, msg_size))
+    {
         return NET_INVAL_MSG_FORMAT;
     }
 
     return net_send(c->fd, msg, msg_size);
 }
 
-int net_read(const int fd, void* buffer, const int size) {
+int net_read(const int fd, void *buffer, const int size)
+{
     int ret;
-    int packet_size; 
+    int packet_size;
 
     ret = read(fd, &packet_size, sizeof(int));
-    if (ret != sizeof(int)) return NET_ERROR;
+    if (ret != sizeof(int))
+        return NET_ERROR;
 
-    if (packet_size > size) return NET_ERROR;
-    
+    if (packet_size > size)
+        return NET_ERROR;
+
     ret = read(fd, buffer, packet_size);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         return NET_ERROR;
     }
-    if (ret == 0) {
+    if (ret == 0)
+    {
         return NET_CONN_DOWN;
     }
 
     return ret;
 }
 
-int peak_int(connection_t* c) {
+int peak_int(connection_t *c)
+{
     int n = 0;
-    if (recv(c->fd, &n, sizeof(int), MSG_PEEK) != sizeof(int)) {
+    if (recv(c->fd, &n, sizeof(int), MSG_PEEK) != sizeof(int))
+    {
         return NET_CHECK_ERRNO;
     }
-    
+
     return n;
 }
 
-int net_flush(connection_t* c) {
+int net_flush(connection_t *c)
+{
     const int sizeof_buffer = 256;
-    void* buffer = (void*)malloc(sizeof_buffer);
+    void *buffer = (void *)malloc(sizeof_buffer);
     int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
 
     fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-    while(read(c->fd, buffer, sizeof_buffer) > 0);
+    while (read(c->fd, buffer, sizeof_buffer) > 0)
+        ;
     fcntl(STDIN_FILENO, F_SETFL, flags);
-    
+
     free(buffer);
     return NET_SUCCESS;
 }

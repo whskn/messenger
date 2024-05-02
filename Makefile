@@ -9,10 +9,12 @@ all: misc server client test_env
 	rm -f src/misc/*.o server client
 
 test_env:
-	mkdir -p client1 client2 serv
+	mkdir -p client1 client2 client3 client4 serv
 	rm -f src/misc/*.o
 	cp client client1/client
 	cp client client2/client
+	cp client client3/client
+	cp client client4/client
 	cp server serv/server
 	rm -f client server
 	
@@ -99,7 +101,7 @@ misc:
 	
 
 purge: clean
-	rm -r -f serv client1 client2
+	rm -r -f serv client1 client2 client3 client4
 
 clean:
 	rm -f client server src/client/*.o src/server/*.o \

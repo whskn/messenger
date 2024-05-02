@@ -9,51 +9,58 @@
 #include "../misc/validate.h"
 #include "handlers.h"
 
-
 #define KEY_CTRL(x) (x & 0x1f)
 #define KEY_ENTER_REDEF 10
 // pulling message history
 
 /**
  * Recieves and sends messages
- * 
+ *
  * @param c connection with the server
-*/
-void manage_conn(connection_t* c, ui_t* ui_data, void* buffer, db_t* db) {
+ */
+void manage_conn(connection_t *c, ui_t *ui_data, void *buffer, db_t *db)
+{
     load_history(db, ui_data);
     ui_render_window(ui_data);
     int ret;
 
-    while (true) {
+    while (true)
+    {
         // polling input fd and socket fd
         struct pollfd fds[2] = {{.fd = c->fd, .events = POLLIN, .revents = 0},
-                        {.fd = STDIN_FILENO, .events = POLLIN, .revents = 0}};
+                                {.fd = STDIN_FILENO, .events = POLLIN, .revents = 0}};
 
         // Blocking until message comes
         ret = poll(fds, (nfds_t)2, -1);
-        if (ret == -1 && errno == EINTR) {
+        if (ret == -1 && errno == EINTR)
+        {
             ui_render_window(ui_data);
             continue;
         }
-        if (ret < 0) {
+        if (ret < 0)
+        {
             return;
         }
 
-        if (fds[0].revents) {
-            if (ret < 0) return;
-            
+        if (fds[0].revents)
+        {
+            if (ret < 0)
+                return;
+
             ret = net_read(c->fd, buffer, MAX_PACKET_SIZE);
-            if (ret <= 0) return;
+            if (ret <= 0)
+                return;
 
-            int code = *(int*)buffer;
+            int code = *(int *)buffer;
 
-            switch (code) {
+            switch (code)
+            {
             case CC_MSG:
-                incoming_msg(ui_data, (msg_t*)buffer, db, ret);
+                incoming_msg(ui_data, (msg_t *)buffer, db, ret);
                 break;
 
             case CC_USER_RQS:
-                add_new_chat(ui_data, db, (user_rsp_t*)buffer);
+                add_new_chat(ui_data, db, (user_rsp_t *)buffer);
                 break;
 
             case NET_CHECK_ERRNO:
@@ -64,11 +71,14 @@ void manage_conn(connection_t* c, ui_t* ui_data, void* buffer, db_t* db) {
             }
         }
 
-        if (fds[1].revents) {
-            if (ret <= 0) return;
+        if (fds[1].revents)
+        {
+            if (ret <= 0)
+                return;
             int key = getch();
 
-            switch (key) {
+            switch (key)
+            {
             case KEY_UP:
                 chat_up(ui_data, db);
                 break;
@@ -78,7 +88,7 @@ void manage_conn(connection_t* c, ui_t* ui_data, void* buffer, db_t* db) {
                 break;
 
             case KEY_ENTER_REDEF:
-                send_msg(ui_data, c, (msg_t*)buffer, db);
+                send_msg(ui_data, c, (msg_t *)buffer, db);
                 break;
 
             case KEY_BACKSPACE:

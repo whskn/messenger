@@ -1,6 +1,6 @@
 
 #ifndef _UI_CONFIG
-# define _UI_CONFIG
+#define _UI_CONFIG
 
 #define MAX_HIST 50
 
@@ -23,57 +23,56 @@
 #define HIDE_SIDE_BAR_WIDTH 85
 #define HEADER_MAX_LEN 100
 
-#define USERNAME_CHAR       '@'
-#define CHATS_BAGE          "YOUR CHATS:"
-#define MESSAGE_BAGE        "type your message here"
-#define NO_HISTORY          "There is no message history with this user"
-#define TOO_SMALL           "window is too small"
-#define USERNAME_SHORTAGE   "..."
-#define BADNAME_WANRING     "Allowed characters: a-z, A-Z, and 0-9"
-#define NO_CHATS            "NO CHATS"
-#define CHAT_ADD_HINT       "CTRL + N TO ADD ONE"
-#define CHOOSE_CHAT         "Choose a chat to start messaging"
+#define USERNAME_CHAR '@'
+#define CHATS_BAGE "YOUR CHATS:"
+#define MESSAGE_BAGE "type your message here"
+#define NO_HISTORY "There is no message history with this user"
+#define TOO_SMALL "window is too small"
+#define USERNAME_SHORTAGE "..."
+#define BADNAME_WANRING "Allowed characters: a-z, A-Z, and 0-9"
+#define NO_CHATS "NO CHATS"
+#define CHAT_ADD_HINT "CTRL + N TO ADD ONE"
+#define CHOOSE_CHAT "Choose a chat to start messaging"
 
 // Login window
-#define USERNAME            "Username: "
-#define PASSWORD            "Password: "
-#define LOGIN               "LOGIN"
-#define REGISTER            "REGISTER"
-#define INSTRUCTION         "Usage: UP-DOWN LEFT-RIGHT keys"
+#define USERNAME "Username: "
+#define PASSWORD "Password: "
+#define LOGIN "LOGIN"
+#define REGISTER "REGISTER"
+#define INSTRUCTION "Usage: UP-DOWN LEFT-RIGHT keys"
 
-#define ADD_YOURSELF        "You cannot have a chat with yourself"
-#define NO_SUCH_USER        "Can't find a user with such name"
-#define SERVER_ERROR        "Can't find the user: server error"
-#define INVAL_NAME          "Invalid username"
-#define USER_EXISTS         "User already exists, choose another name"
-#define UNKNOWN_ERR         "Unknown error..."
+#define ADD_YOURSELF "You cannot have a chat with yourself"
+#define NO_SUCH_USER "Can't find a user with such name"
+#define SERVER_ERROR "Can't find the user: server error"
+#define INVAL_NAME "Invalid username"
+#define USER_EXISTS "User already exists, choose another name"
+#define UNKNOWN_ERR "Unknown error..."
 
-#define CONNECTING          "Connecting"
-#define MAX_DOTS            3
+#define CONNECTING "Connecting"
+#define MAX_DOTS 3
 
+#define BG_HEADER 6
+#define FONT_HEADER 7
 
-#define BG_HEADER           6
-#define FONT_HEADER         7
+#define BG_FOOTER 6
+#define FONT_FOOTER 7
 
-#define BG_FOOTER           6
-#define FONT_FOOTER         7
+#define BG_MSG_HEADER 0
+#define FONT_MSG_HEADER 5
 
-#define BG_MSG_HEADER       0
-#define FONT_MSG_HEADER     5
+#define BG_MY_MSG_HEADER 0
+#define FONT_MY_MSG_HEAER 1
 
-#define BG_MY_MSG_HEADER    0
-#define FONT_MY_MSG_HEAER   1
+#define BG_CHAT_SELECTOR 7
+#define FONT_CHAT_SELECTOR 0
 
-#define BG_CHAT_SELECTOR    7
-#define FONT_CHAT_SELECTOR  0
+#define BG_WIN_WARN 1
+#define FONT_WIN_WARN 0
 
-#define BG_WIN_WARN         1
-#define FONT_WIN_WARN       0
+#define BG_BADNAME 0
+#define FONT_BADNAME 1
 
-#define BG_BADNAME          0
-#define FONT_BADNAME        1
-
-#define BG_GRAYED_OUT       0
-#define FONT_GRAYED_OUT     8
+#define BG_GRAYED_OUT 0
+#define FONT_GRAYED_OUT 8
 
 #endif
