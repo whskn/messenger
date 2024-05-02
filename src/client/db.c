@@ -149,17 +149,6 @@ int db_chat_exists(struct DB *db, const int chat_id)
     return exists;
 }
 
-/**
- * Push the data from a buffer to the database
- *
- * @param dir directory where the db file is in, MUST END WITH '/'!.
- *            NULL if it's in the same dir.
- * @param name of the database's file
- * @param data buffer with the data to push
- * @param size size of the data to push
- *
- * @return error codes
- */
 int db_push(struct DB *db, msg_t *msg)
 {
     sqlite3 *sqldb = db->sqldb;
@@ -207,59 +196,6 @@ int db_count_rows(struct DB *db, const int chat_id)
     return n;
 }
 
-/**
- * Pulls the oldest entry from a db and deletes it afterwards;
- *
- * @param name name of the database's file
- * @param data a buffer for the entry
- * @param size max size of the entry
- *
- * @return size or readed blob or error codes, see history.h
- */
-int db_pull(struct DB *db, msg_t *msg, const int chat_id)
-{
-    sqlite3 *sqldb = db->sqldb;
-    sqlite3_stmt *stmt = NULL;
-    int ret;
-    int msg_id;
-
-    ENTER_TRANSACTION(sqldb);
-
-    ret = sqlite3_prepare_v2(sqldb, PULL, -1, &stmt, NULL);
-    HANDLE_ERROR_TRANSACTION(ret, sqldb, stmt);
-    sqlite3_bind_int(stmt, 1, chat_id);
-    ret = sqlite3_step(stmt);
-    HANDLE_ERROR_TRANSACTION(ret, sqldb, stmt);
-
-    msg_id = sqlite3_column_int(stmt, 0);
-    msg->from_id = sqlite3_column_int(stmt, 1);
-    msg->to_id = sqlite3_column_int(stmt, 2);
-    msg->timestamp = sqlite3_column_int(stmt, 3);
-    msg->text_size = sqlite3_column_int(stmt, 4);
-    strncpy(msg->buffer, (const char *)sqlite3_column_text(stmt, 5),
-            MAX_MESSAGE_LEN);
-
-    sqlite3_finalize(stmt);
-
-    ret = sqlite3_prepare_v2(sqldb, DELETE_MSG, -1, &stmt, NULL);
-    HANDLE_ERROR_TRANSACTION(ret, sqldb, stmt);
-    sqlite3_bind_int(stmt, 1, msg_id);
-    ret = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
-    LEAVE_TRANSACTION(sqldb);
-    return HST_SUCCESS;
-}
-
-/**
- * ...
- *
- * @param name name of the database's file
- * @param data a buffer for the entry
- * @param size max size of the entry
- *
- * @return HST_SUCCESS or negative error code
- */
 int db_read_next(struct DB *db, const int chat_id, msg_t *msg, const int idx)
 {
     sqlite3 *sqldb = db->sqldb;
@@ -335,12 +271,6 @@ int rm_chat(struct DB *db, const int chat_id)
     return HST_SUCCESS;
 }
 
-/**
- * This function concatinates dir, filename and extension strings and
- * returns a pointer to the string. Returns NULL if allocation failed.
- *
- * Calling thread must free() memory.
- */
 char *build_filename(const char *dir, const char *filename)
 {
     const int max_dir_size = 4096;

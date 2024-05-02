@@ -1,13 +1,15 @@
+/**
+ * This header file provides functions to render particular elements
+ * of the user interface with ncurses. All of the functions DO NOT
+ * accept user input or change window contents dynamically. All they do is
+ * just render UI parts.
+ *
+ * Only for use in ui.c
+ */
+
 #include "interface.h"
 
-/**
- * Render warning, that the window is not wide/high enough
- */
 extern void render_size_warning(ui_t *ui_data);
-
-/**
- *
- */
 extern void render_top_bar(ui_t *ui_data);
 extern void render_empty_side_bar(ui_t *ui_data);
 extern void render_side_bar(ui_t *ui_data);

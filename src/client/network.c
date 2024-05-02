@@ -16,14 +16,6 @@
 #include "network.h"
 #include "../misc/validate.h"
 
-/**
- * Creates a socket and tries to connect to a server.
- *
- * @param ip ip address of the server
- * @param port port of the server
- *
- * @return connection file descriptor or error code
- */
 static int try_connect(const char *ip, const int port)
 {
     struct sockaddr_in address;
@@ -72,14 +64,6 @@ static int try_connect(const char *ip, const int port)
     return fd;
 }
 
-/**
- * Authenticates user on the server.
- *
- * @parem fd file descriptor of the tcp connection
- * @param username user's nickname
- *
- * @return error codes
- */
 static int auth(int fd, username_t username, password_t password,
                 const bool new_account)
 {
@@ -123,15 +107,6 @@ static int auth(int fd, username_t username, password_t password,
     return NET_SERVER_ERROR;
 }
 
-/**
- * Gathers try_connect() and auth() together for cozy high-lever use.
- *
- * @param c connection
- * @param ip ip of the server to connect to
- * @param port port of the server to connect to
- *
- * @return error codes
- */
 int net_connect(connection_t *c, const char *ip, const int port,
                 username_t my_name, password_t password, const bool new_acc)
 {
@@ -172,12 +147,6 @@ int net_user_req(connection_t *c, username_t name)
     return NET_SUCCESS;
 }
 
-/**
- * Closes connection with a server
- *
- * @param c the connection to close
- * @return error codes
- */
 int net_close_conn(connection_t *c)
 {
     return !close(c->fd) ? NET_SUCCESS : NET_CHECK_ERRNO;
@@ -198,22 +167,6 @@ int net_send(const int fd, void *buffer, const int size)
     return ret;
 }
 
-// static int strnlen(const char* string, const int limit) {
-//     int len = 0;
-//     for(; string[len] && len < limit; len++);
-//     return len;
-// }
-
-/**
- * Send message from the buffer. Buffer can point to buffer of msg of connection
- * so that function won't copy the message. This can help avoid redunduncy.
- *
- * @param c connection
- * @param msg message struct
- * @param buffer message's buffer (better be pointed at c->msg->buffer)
- *
- * @return size of message sent on success, error code otherwise
- */
 int net_send_msg(connection_t *c,
                  msg_t *msg,
                  char *buffer,
@@ -263,17 +216,6 @@ int net_read(const int fd, void *buffer, const int size)
     }
 
     return ret;
-}
-
-int peak_int(connection_t *c)
-{
-    int n = 0;
-    if (recv(c->fd, &n, sizeof(int), MSG_PEEK) != sizeof(int))
-    {
-        return NET_CHECK_ERRNO;
-    }
-
-    return n;
 }
 
 int net_flush(connection_t *c)

@@ -24,6 +24,7 @@
 #define HEADER_MAX_LEN 100
 
 #define USERNAME_CHAR '@'
+#define ME_NAMETAG "me"
 #define CHATS_BAGE "YOUR CHATS:"
 #define MESSAGE_BAGE "type your message here"
 #define NO_HISTORY "There is no message history with this user"
@@ -51,6 +52,7 @@
 #define CONNECTING "Connecting"
 #define MAX_DOTS 3
 
+/* Used in ui.c ui_init() */
 #define BG_HEADER 6
 #define FONT_HEADER 7
 
@@ -74,5 +76,8 @@
 
 #define BG_GRAYED_OUT 0
 #define FONT_GRAYED_OUT 8
+
+#define BG_NORMAL 0
+#define FONT_NORMAL 7
 
 #endif

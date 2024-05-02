@@ -11,16 +11,10 @@
 
 #define KEY_CTRL(x) (x & 0x1f)
 #define KEY_ENTER_REDEF 10
-// pulling message history
 
-/**
- * Recieves and sends messages
- *
- * @param c connection with the server
- */
 void manage_conn(connection_t *c, ui_t *ui_data, void *buffer, db_t *db)
 {
-    load_history(db, ui_data);
+    h_load_history(db, ui_data);
     ui_render_window(ui_data);
     int ret;
 
@@ -56,11 +50,11 @@ void manage_conn(connection_t *c, ui_t *ui_data, void *buffer, db_t *db)
             switch (code)
             {
             case CC_MSG:
-                incoming_msg(ui_data, (msg_t *)buffer, db, ret);
+                h_incoming_msg(ui_data, (msg_t *)buffer, db, ret);
                 break;
 
             case CC_USER_RQS:
-                add_new_chat(ui_data, db, (user_rsp_t *)buffer);
+                h_add_new_chat(ui_data, db, (user_rsp_t *)buffer);
                 break;
 
             case NET_CHECK_ERRNO:
@@ -80,23 +74,23 @@ void manage_conn(connection_t *c, ui_t *ui_data, void *buffer, db_t *db)
             switch (key)
             {
             case KEY_UP:
-                chat_up(ui_data, db);
+                h_chat_up(ui_data, db);
                 break;
 
             case KEY_DOWN:
-                chat_down(ui_data, db);
+                h_chat_down(ui_data, db);
                 break;
 
             case KEY_ENTER_REDEF:
-                send_msg(ui_data, c, (msg_t *)buffer, db);
+                h_send_msg(ui_data, c, (msg_t *)buffer, db);
                 break;
 
             case KEY_BACKSPACE:
-                backspace(ui_data);
+                h_backspace(ui_data);
                 break;
 
             case KEY_CTRL('n'):
-                chat_request(ui_data, c);
+                h_chat_request(ui_data, c);
                 break;
 
             case KEY_RESIZE:
@@ -104,7 +98,7 @@ void manage_conn(connection_t *c, ui_t *ui_data, void *buffer, db_t *db)
                 break;
 
             default:
-                add_char(ui_data, (int8_t)key);
+                h_add_char(ui_data, (int8_t)key);
             }
         }
     }

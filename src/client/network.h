@@ -1,8 +1,10 @@
-#include <stdbool.h>
-#include "../message.h"
+/* Network communication interface */
 
 #ifndef _NETWORK
 #define _NETWORK
+
+#include <stdbool.h>
+#include "../message.h"
 
 #define CONNECTION_TIMEOUT 2500
 #define AUTH_TIMEOUT 6000
@@ -22,6 +24,7 @@
 #define NET_ERROR -9
 #define NET_TIMEOUT -10
 
+/* stores info about connection to server*/
 typedef struct
 {
     int fd;
@@ -29,15 +32,27 @@ typedef struct
     username_t my_name;
 } connection_t;
 
+/* Connects to the server */
 extern int net_connect(connection_t *c, const char *ip, const int port,
                        username_t my_name, password_t password,
                        const bool new_acc);
+
+/* Request user info */
 extern int net_user_req(connection_t *c, username_t name);
+
+/* send message of mgs_t format */
 extern int net_send_msg(connection_t *c, msg_t *msg, char *buffer, const int to_id);
+
+/* read message */
 extern int net_read(const int fd, void *buffer, const int size);
+
+/* close connection with server */
 extern int net_close_conn(connection_t *c);
-extern int peak_int(connection_t *c);
+
+/* flush data on connection fd */
 extern int net_flush(connection_t *c);
+
+/* send arbitrary data */
 extern int net_send(const int fd, void *buffer, const int size);
 
 #endif

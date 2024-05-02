@@ -12,7 +12,7 @@
 #include "../misc/validate.h"
 #include "ui.h"
 
-void load_history(db_t *db, ui_t *ui_data)
+void h_load_history(db_t *db, ui_t *ui_data)
 {
     int ret;
 
@@ -43,21 +43,21 @@ void load_history(db_t *db, ui_t *ui_data)
     }
 }
 
-void chat_up(ui_t *ui_data, db_t *db)
+void h_chat_up(ui_t *ui_data, db_t *db)
 {
     ui_switch_chat(ui_data, -1);
-    load_history(db, ui_data);
+    h_load_history(db, ui_data);
     ui_render_window(ui_data);
 }
 
-void chat_down(ui_t *ui_data, db_t *db)
+void h_chat_down(ui_t *ui_data, db_t *db)
 {
     ui_switch_chat(ui_data, 1);
-    load_history(db, ui_data);
+    h_load_history(db, ui_data);
     ui_render_window(ui_data);
 }
 
-void send_msg(ui_t *ui_data, connection_t *c, msg_t *msg, db_t *db)
+void h_send_msg(ui_t *ui_data, connection_t *c, msg_t *msg, db_t *db)
 {
     // if message field is empty, there is nothing to send
     if (ui_data->buffer[0] == '\0')
@@ -88,7 +88,7 @@ void send_msg(ui_t *ui_data, connection_t *c, msg_t *msg, db_t *db)
     ui_render_window(ui_data);
 }
 
-void backspace(ui_t *ui_data)
+void h_backspace(ui_t *ui_data)
 {
     if (ui_data->text_len > 0)
     {
@@ -98,7 +98,7 @@ void backspace(ui_t *ui_data)
     ui_render_window(ui_data);
 }
 
-void chat_request(ui_t *ui_data, connection_t *c)
+void h_chat_request(ui_t *ui_data, connection_t *c)
 {
     username_t newchat;
     ui_get_input(ui_data, newchat, sizeof(username_t),
@@ -119,7 +119,7 @@ void chat_request(ui_t *ui_data, connection_t *c)
     ui_render_window(ui_data);
 }
 
-void add_char(ui_t *ui_data, char ch)
+void h_add_char(ui_t *ui_data, char ch)
 {
     if (CURR_CHAT(ui_data) == NULL)
         return;
@@ -132,7 +132,7 @@ void add_char(ui_t *ui_data, char ch)
     ui_render_window(ui_data);
 }
 
-void incoming_msg(ui_t *ui_data, void *buffer, db_t *db, const int size)
+void h_incoming_msg(ui_t *ui_data, void *buffer, db_t *db, const int size)
 {
     int ret;
 
@@ -176,7 +176,7 @@ void incoming_msg(ui_t *ui_data, void *buffer, db_t *db, const int size)
     ui_render_window(ui_data);
 }
 
-void add_new_chat(ui_t *ui_data, db_t *db, void *buffer)
+void h_add_new_chat(ui_t *ui_data, db_t *db, void *buffer)
 {
     chat_t new_chat;
 
@@ -208,7 +208,7 @@ void add_new_chat(ui_t *ui_data, db_t *db, void *buffer)
         return;
     }
     ui_add_chat(ui_data, &new_chat);
-    load_history(db, ui_data);
+    h_load_history(db, ui_data);
 
     ui_render_window(ui_data);
 }

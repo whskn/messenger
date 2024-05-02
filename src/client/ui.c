@@ -10,7 +10,6 @@
 
 ui_t *ui_init(chat_t *chats, const int n_of_chats)
 {
-
     // init screen
     initscr();
     cbreak();
@@ -41,6 +40,7 @@ ui_t *ui_init(chat_t *chats, const int n_of_chats)
     init_pair(CLR_BADNAME, FONT_BADNAME, BG_BADNAME);
     init_pair(CLR_WIN_WARN, FONT_WIN_WARN, BG_WIN_WARN);
     init_pair(CLR_GRAYED_OUT, FONT_GRAYED_OUT, BG_GRAYED_OUT);
+    init_pair(CLR_NORMAL, FONT_NORMAL, BG_NORMAL);
 
     return ui_data;
 }
@@ -370,19 +370,6 @@ void ui_append_message(ui_t *ui_data, msg_t *msg)
 
     ui_data->history[newhead] = loc_msg;
     ui_data->hist_head = newhead;
-}
-
-void ui_curr_chat_name(ui_t *ui_data, username_t username)
-{
-    if (ui_data->n_of_chats < 1)
-    {
-        username[0] = '\0';
-    }
-    else
-    {
-        strncpy(username, ui_data->chats[ui_data->curr_chat].with_user,
-                USERNAME_LEN);
-    }
 }
 
 void ui_close(ui_t *ui_data)

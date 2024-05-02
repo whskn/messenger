@@ -1,12 +1,14 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "render.h"
 #include "ui_config.h"
-#include <string.h>
 
+/* Defines the width of side bar based on window width */
 #define SIDE_BAR_WIDTH(ui_data) \
     (getmaxx(ui_data->window) > HIDE_SIDE_BAR_WIDTH ? SIDE_BAR_DEF_WIDTH : 0)
 
+/* Defines the height of the footer (text input field) based on text size */
 #define FOOTER_HEIGHT(ui_data, max_x) \
     (MIN_FOOTER_HEIGHT + ui_data->text_len / max_x)
 
@@ -57,16 +59,18 @@ void render_login_win(ui_t *ui_data,
     printw("%s", stars);
 
     if (button == 0)
+    {
         attron(COLOR_PAIR(CLR_HEADER));
+    }
     mvprintw(margin_top + 4, margin_left, "%s", LOGIN);
-    if (button == 0)
-        attroff(COLOR_PAIR(CLR_HEADER));
+    attron(COLOR_PAIR(CLR_NORMAL));
 
     if (button == 1)
+    {
         attron(COLOR_PAIR(CLR_HEADER));
+    }
     mvprintw(margin_top + 4, margin_left + sizeof(LOGIN), "%s", REGISTER);
-    if (button == 1)
-        attroff(COLOR_PAIR(CLR_HEADER));
+    attron(COLOR_PAIR(CLR_NORMAL));
 
     attron(COLOR_PAIR(CLR_GRAYED_OUT));
     mvprintw(margin_top + 6, (width - sizeof(INSTRUCTION)) / 2, "%s", INSTRUCTION);
@@ -98,7 +102,7 @@ void render_get_input(ui_t *ui_data, char *printout, int printout_len,
                  BADNAME_WANRING);
     }
     mvprintw(height / 2, (width - input_len) / 2, "%s", input);
-    attroff(COLOR_PAIR(CLR_BADNAME));
+    attron(COLOR_PAIR(CLR_NORMAL));
 }
 
 void render_top_bar(ui_t *ui_data)
@@ -252,6 +256,8 @@ void render_msg_hist(ui_t *ui_data)
     const int width = max_x - SIDE_BAR_WIDTH(ui_data) -
                       LEFT_MSG_MARGIN - RIGHT_MESSAGE_MARGIN;
     int row = max_y - FOOTER_HEIGHT(ui_data, max_x) - 1;
+    int head;
+    char *header;
 
     if (CURR_CHAT(ui_data) == NULL)
     {
@@ -268,14 +274,17 @@ void render_msg_hist(ui_t *ui_data)
         return;
     }
 
-    int i = ui_data->hist_head;
-    char *header = (char *)malloc(sizeof(char) * HEADER_MAX_LEN);
+    head = ui_data->hist_head;
+    header = (char *)malloc(sizeof(char) * HEADER_MAX_LEN);
 
+    /* iterate through message history */
     do
-    { // iterate through history
-        msg_t *m = ui_data->history[i];
+    {
+        msg_t *m = ui_data->history[head];
         if (m == NULL)
+        {
             break;
+        }
         bool my_message = (m->from_id == ui_data->my_id);
 
         int header_len = create_header(header,
@@ -288,6 +297,7 @@ void render_msg_hist(ui_t *ui_data)
         int line_width = width - header_len;
         int rest_size = m->text_size - 1; // _len = _size - 1, cause of \0
 
+        /* iterate through lines of message */
         do
         {
             int line_len = rest_size % line_width
@@ -299,19 +309,23 @@ void render_msg_hist(ui_t *ui_data)
         } while (--row >= top_row && rest_size > 0);
 
         if (my_message)
+        {
             attron(COLOR_PAIR(CLR_MY_MSG_HEADER));
+        }
         else
+        {
             attron(COLOR_PAIR(CLR_MSG_HEADER));
+        }
         mvprintw(row + 1, LEFT_MSG_MARGIN, "%s", header);
-        if (my_message)
-            attroff(COLOR_PAIR(CLR_MY_MSG_HEADER));
-        else
-            attroff(COLOR_PAIR(CLR_MSG_HEADER));
+        attroff(COLOR_PAIR(CLR_BADNAME));
 
-        if (--i < 0)
-            i += ui_data->history_len; // same as (i + 1) % history_len
+        /* same as (i + 1) % history_len */
+        if (--head < 0)
+        {
+            head += ui_data->history_len;
+        }
 
-    } while (i != ui_data->hist_head && row >= top_row);
+    } while (head != ui_data->hist_head && row >= top_row);
 
     free(header);
 }
