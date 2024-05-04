@@ -29,7 +29,7 @@ ORDER BY timestamp ASC LIMIT 1;"
 
 #define DELETE_CHAT "DELETE FROM contacts WHERE user_id = ?;"
 
-#define DELETE_MESSAGES "DELETE FROM messages WHERE from_id = ?;"
+#define DELETE_MESSAGES "DELETE FROM messages WHERE from_id = ? OR to_id == ?;"
 
 #define COUNT_CHATS "SELECT COUNT(*) AS num_chats FROM contacts;"
 
@@ -40,7 +40,8 @@ ORDER BY timestamp ASC LIMIT 1;"
 #define GET_NEXT "SELECT * FROM messages WHERE from_id = ? OR to_id = ? \
 ORDER BY timestamp DESC LIMIT 1 OFFSET ?;"
 
-#define COUNT_ROWS "SELECT COUNT(*) AS count WHERE from_id = ? OR to_id = ?;"
+#define COUNT_ROWS "SELECT COUNT(*) FROM messages AS count \
+WHERE from_id = ? OR to_id = ?;"
 
 #define TRANSACTION "BEGIN TRANSACTION"
 #define COMMIT "COMMIT"

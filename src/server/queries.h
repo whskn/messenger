@@ -27,10 +27,10 @@ VALUES (?, ?, ?, ?, ?, ?);"
 FROM users WHERE username = ? LIMIT 1;"
 
 #define PULL_UNSENT "SELECT m.message_id, m.to_id, \
-    m.from_id, m.timestamp, m.text_size, m.message, u.username \
+m.from_id, m.timestamp, m.text_size, m.message, u.username \
 FROM messages AS m \
 JOIN users AS u ON m.from_id = u.user_id \
-WHERE m.to_id = ? AND m.sent = 0 AND m.timestamp > ? \
+WHERE m.to_id = ? AND m.sent = 0 AND m.timestamp >= ? \
 ORDER BY m.timestamp ASC \
 LIMIT 1;"
 

@@ -1,3 +1,6 @@
+/* Header file provides wrapper functions for network communication system
+calls*/
+
 // Error codes
 #define NET_SUCCESS 0
 #define NET_CHECK_ERRNO -1
@@ -10,8 +13,14 @@
 
 #define CONN_QUEUE 5
 
+/* Get wait for and get new connection (Blocks runtime) */
 extern int net_harvest_conn(const int sockFd);
+
+/* send data */
 extern int net_send(const int fd, void *buffer, const int size);
+
+/* recv data */
 extern int net_read(const int fd, void *buffer, const int size);
+
 extern int net_open_sock(const int port);
 extern int net_close_conn(const int fd);

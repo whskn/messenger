@@ -24,5 +24,6 @@ extern void h_add_char(ui_t *ui_data, char ch);
 extern void h_backspace(ui_t *ui_data);
 
 extern void h_load_history(db_t *db, ui_t *ui_data);
+extern void h_del_chat(ui_t *ui_data, db_t *db);
 
 #endif

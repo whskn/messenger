@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
             ui_warning(ui_data, loading_ani());
             continue;
         }
-        else if (user_id == NET_INVALID_NAME)
+        else if (user_id == NET_INVALID_AUTH)
         {
             ui_warning(ui_data, INVAL_NAME);
             sleep(WARNING_SLEEP);
@@ -106,6 +106,7 @@ int main(int argc, char *argv[])
             break;
         }
 
+        new_acc = false;
         ui_flush_stdin();
         ui_set_my_id(ui_data, user_id);
         manage_conn(&c, ui_data, buffer, db);

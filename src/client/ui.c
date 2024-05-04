@@ -131,11 +131,14 @@ int ui_login(ui_t *ui_data,
         switch (ch)
         {
         case '\n':
-            memcpy(username, buff_0, sizeof(username_t));
-            memcpy(password, buff_1, sizeof(password_t));
-            free(buff_0);
-            free(buff_1);
-            return button;
+            if (len_0 > 0 && len_1 > 0)
+            {
+                memcpy(username, buff_0, sizeof(username_t));
+                memcpy(password, buff_1, sizeof(password_t));
+                free(buff_0);
+                free(buff_1);
+                return button;
+            }
 
         case KEY_RESIZE:
             break;
@@ -186,9 +189,6 @@ int ui_login(ui_t *ui_data,
 void ui_get_input(ui_t *ui_data, char *data, int size, char *printout,
                   bool (*_filter)(const int))
 {
-    // TEHDOLG hide chars when variable is true
-    // TEHDOLG check name after ENTER is pressed (empty names somehow aren't detected)
-    // TEHDOLG name_filter, passwd_filter doesn't work (they pass unwanted chars)
     char *temp_buff = (char *)malloc(size * sizeof(char));
     temp_buff[0] = '\0';
     int printout_len = strlen(printout);
@@ -210,38 +210,40 @@ void ui_get_input(ui_t *ui_data, char *data, int size, char *printout,
                          badname);
 
         int ch = getch();
-        badname = false;
         switch (ch)
         {
         case '\n':
-            for (int i = 0; i < len - 1; i++)
+            if (len > 0)
             {
-                if (!filter(temp_buff[i]))
-                {
-                    badname = true;
-                    break;
-                }
+                memcpy(data, temp_buff, size);
+                free(temp_buff);
+                return;
             }
-            if (badname)
-                break;
-
-            memcpy(data, temp_buff, size);
-            free(temp_buff);
-            return;
 
         case KEY_RESIZE:
             break;
 
         case KEY_BACKSPACE:
             if (len > 0)
+            {
                 temp_buff[--len] = '\0';
+            }
+            badname = false;
             break;
 
         default:
-            if (len < size - 1)
-            { // for new char and \0
-                temp_buff[len++] = (char)ch;
-                temp_buff[len] = '\0';
+            if (len < size - 1) // for new char and \0
+            {
+                if (filter(ch))
+                {
+                    temp_buff[len++] = (char)ch;
+                    temp_buff[len] = '\0';
+                    badname = false;
+                }
+                else
+                {
+                    badname = true;
+                }
             }
             break;
         }
@@ -314,7 +316,6 @@ void ui_add_chat(ui_t *ui_data, chat_t *chat)
 
 void ui_remove_chat(ui_t *ui_data, chat_t *chat)
 {
-    // TEHDOLG
     int idx = 0;
     for (; idx < ui_data->n_of_chats; idx++)
     {

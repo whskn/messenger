@@ -6,7 +6,7 @@ ICU = -licuuc
 
 
 all: misc server client test_env
-	rm -f src/misc/*.o server client
+	rm -f src/misc/*.o
 
 test_env:
 	mkdir -p client1 client2 client3 client4 serv
@@ -16,7 +16,6 @@ test_env:
 	cp client client3/client
 	cp client client4/client
 	cp server serv/server
-	rm -f client server
 	
 
 

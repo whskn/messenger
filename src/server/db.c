@@ -162,7 +162,8 @@ int db_mark_as_sent(struct DB *db, const int message_id)
     return HST_SUCCESS;
 }
 
-int db_new_user(struct DB *db, username_t name, password_t password)
+int db_new_user(struct DB *db, username_t name, password_t password,
+                user_t *user)
 {
     sqlite3 *sqldb = db->sqldb;
     sqlite3_stmt *stmt = NULL;
@@ -179,7 +180,6 @@ int db_new_user(struct DB *db, username_t name, password_t password)
     sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, password, -1, SQLITE_STATIC);
 
-    // TEHDOLG check if error handling is ok
     ENTER_T(sqldb, stmt);
     ret = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -196,7 +196,11 @@ int db_new_user(struct DB *db, username_t name, password_t password)
     user_id = sqlite3_last_insert_rowid(sqldb);
     LEAVE_T(sqldb);
 
-    return user_id ? user_id : HST_ERROR;
+    user->user_id = user_id;
+    strncpy(user->username, name, USERNAME_LEN);
+    strncpy(user->password, password, PASSWORD_LEN);
+
+    return user_id ? HST_SUCCESS : HST_ERROR;
 }
 
 int db_get_user(struct DB *db, username_t name, user_t *user)

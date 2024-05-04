@@ -1,19 +1,6 @@
 #include <string.h>
 #include "validate.h"
 
-// static int strnlen(const char* string, const int limit) {
-//     int len = 0;
-//     for(; string[len] && len < limit; len++);
-//     return len;
-// }
-
-/**
- * Checks message for validity.
- * @param msg where the message is stored (msg_t* casted to void*)
- * @param size of msg excluding unused bytes in buffer
- *
- * @return weather the message valid or not
- */
 bool msg_is_valid(void *msg_void_ptr, const int size)
 {
     msg_t *msg = (msg_t *)msg_void_ptr;
@@ -45,13 +32,7 @@ bool msg_is_valid(void *msg_void_ptr, const int size)
 
 bool passwd_filter(const int a)
 {
-    if (!(a >= 48 && a <= 57) &&
-        !(a >= 65 && a <= 90) &&
-        !(a >= 97 && a <= 122) && a != '\0')
-    {
-        return false;
-    }
-    return true;
+    return a >= 32 && a <= 126 ? true : false;
 }
 
 bool passwd_is_valid(password_t p)
@@ -60,10 +41,14 @@ bool passwd_is_valid(password_t p)
     for (; (size_t)i < sizeof(username_t) && p[i]; i++)
     {
         if (!passwd_filter(p[i]))
+        {
             return false;
+        }
     }
     if (i < 1 || p[i])
+    {
         return false;
+    }
     return true;
 }
 
@@ -84,9 +69,13 @@ bool name_is_valid(username_t name)
     for (; (size_t)i < sizeof(username_t) && name[i]; i++)
     {
         if (!name_filter(name[i]))
+        {
             return false;
+        }
     }
     if (i < 1 || name[i])
+    {
         return false;
+    }
     return true;
 }

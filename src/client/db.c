@@ -248,7 +248,7 @@ int db_add_chat(struct DB *db, const chat_t *new_chat)
     return HST_SUCCESS;
 }
 
-int rm_chat(struct DB *db, const int chat_id)
+int db_del_chat(struct DB *db, const int chat_id)
 {
     sqlite3 *sqldb = db->sqldb;
     sqlite3_stmt *stmt;
@@ -264,6 +264,7 @@ int rm_chat(struct DB *db, const int chat_id)
     ret = sqlite3_prepare_v2(sqldb, DELETE_MESSAGES, -1, &stmt, NULL);
     HANDLE_ERROR_STMT(ret, sqldb, stmt);
     sqlite3_bind_int(stmt, 1, chat_id);
+    sqlite3_bind_int(stmt, 2, chat_id);
     ret = sqlite3_step(stmt);
     HANDLE_ERROR_STMT(ret, sqldb, stmt);
     sqlite3_finalize(stmt);

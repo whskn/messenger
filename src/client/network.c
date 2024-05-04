@@ -94,8 +94,8 @@ static int auth(int fd, username_t username, password_t password,
         return rsp.user_id;
     case HS_MAX_CONN:
         return NET_SERVER_OVERLOADED;
-    case HS_INVAL_NAME:
-        return NET_INVALID_NAME;
+    case HS_INVAL_AUTH:
+        return NET_INVALID_AUTH;
     case HS_USER_EXISTS:
         return NET_USER_EXISTS;
     case HS_GENERIC_ERROR:

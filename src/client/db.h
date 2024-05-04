@@ -30,3 +30,5 @@ extern int db_add_chat(struct DB *db, const chat_t *new_chat);
 extern int db_read_next(struct DB *db, const int chat_id, msg_t *msg, const int idx);
 
 extern int db_chat_exists(struct DB *db, const int chat_id);
+
+extern int db_del_chat(struct DB *db, const int chat_id);

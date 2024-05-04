@@ -45,7 +45,7 @@
 #define ADD_YOURSELF "You cannot have a chat with yourself"
 #define NO_SUCH_USER "Can't find a user with such name"
 #define SERVER_ERROR "Can't find the user: server error"
-#define INVAL_NAME "Invalid username"
+#define INVAL_NAME "Invalid name or password"
 #define USER_EXISTS "User already exists, choose another name"
 #define UNKNOWN_ERR "Unknown error..."
 

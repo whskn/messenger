@@ -70,4 +70,5 @@ void logger(const int tag, const char *message, const bool printErrno)
                CLR_RESET,
                message);
     }
+    fflush(stdout);
 }

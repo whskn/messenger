@@ -11,12 +11,15 @@
 
 #define KEY_CTRL(x) (x & 0x1f)
 #define KEY_ENTER_REDEF 10
+#define KEY_CARRIAGE_RETURN 13
+#define KEY_BACKSPACE_REDEF 127
 
 void manage_conn(connection_t *c, ui_t *ui_data, void *buffer, db_t *db)
 {
     h_load_history(db, ui_data);
     ui_render_window(ui_data);
     int ret;
+    int key;
 
     while (true)
     {
@@ -68,8 +71,10 @@ void manage_conn(connection_t *c, ui_t *ui_data, void *buffer, db_t *db)
         if (fds[1].revents)
         {
             if (ret <= 0)
+            {
                 return;
-            int key = getch();
+            }
+            key = getch();
 
             switch (key)
             {
@@ -93,13 +98,22 @@ void manage_conn(connection_t *c, ui_t *ui_data, void *buffer, db_t *db)
                 h_chat_request(ui_data, c);
                 break;
 
+            case KEY_CTRL('d'):
+                h_del_chat(ui_data, db);
+                break;
+
             case KEY_RESIZE:
                 ui_render_window(ui_data);
                 break;
 
             default:
-                h_add_char(ui_data, (int8_t)key);
+                if (key < 256 && key > 0)
+                {
+                    h_add_char(ui_data, (int8_t)key);
+                }
             }
+
+            key = 0;
         }
     }
 }

@@ -119,7 +119,7 @@ void h_chat_request(ui_t *ui_data, connection_t *c)
     ui_render_window(ui_data);
 }
 
-void h_add_char(ui_t *ui_data, char ch)
+void h_add_char(ui_t *ui_data, const char ch)
 {
     if (CURR_CHAT(ui_data) == NULL)
         return;
@@ -160,6 +160,8 @@ void h_incoming_msg(ui_t *ui_data, void *buffer, db_t *db, const int size)
             return;
         }
         ui_add_chat(ui_data, &new_chat);
+
+        h_load_history(db, ui_data);
     }
     chat_t *curr_chat = CURR_CHAT(ui_data);
 
@@ -210,5 +212,14 @@ void h_add_new_chat(ui_t *ui_data, db_t *db, void *buffer)
     ui_add_chat(ui_data, &new_chat);
     h_load_history(db, ui_data);
 
+    ui_render_window(ui_data);
+}
+
+void h_del_chat(ui_t *ui_data, db_t *db)
+{
+    chat_t *chat = CURR_CHAT(ui_data);
+    db_del_chat(db, chat->chat_id);
+    ui_remove_chat(ui_data, chat);
+    h_load_history(db, ui_data);
     ui_render_window(ui_data);
 }
