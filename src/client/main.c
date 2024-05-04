@@ -16,6 +16,8 @@ bool check_addr(const char *ip, const char *port);
 
 int main(int argc, char *argv[])
 {
+    signal(SIGPIPE, SIG_IGN);
+
     username_t my_passwd = {0};
     username_t my_name = {0};
     ui_t *ui_data = NULL;

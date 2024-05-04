@@ -42,6 +42,9 @@
 #define REGISTER "REGISTER"
 #define INSTRUCTION "Usage: UP-DOWN LEFT-RIGHT keys"
 
+#define INSTR_INPUT "Usage: ENTER - submit, CTRL+q - exit"
+#define NEW_USER "NAME OF THE NEW USER: "
+
 #define ADD_YOURSELF "You cannot have a chat with yourself"
 #define NO_SUCH_USER "Can't find a user with such name"
 #define SERVER_ERROR "Can't find the user: server error"

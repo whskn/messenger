@@ -8,6 +8,8 @@
 #include "ui_config.h"
 #include "../misc/validate.h"
 
+#define KEY_CTRL(x) (x & 0x1f)
+
 ui_t *ui_init(chat_t *chats, const int n_of_chats)
 {
     // init screen
@@ -230,6 +232,11 @@ void ui_get_input(ui_t *ui_data, char *data, int size, char *printout,
             }
             badname = false;
             break;
+
+        case KEY_CTRL('x'):
+            data[0] = '\0';
+            free(temp_buff);
+            return;
 
         default:
             if (len < size - 1) // for new char and \0

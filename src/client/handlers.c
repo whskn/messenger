@@ -101,9 +101,13 @@ void h_backspace(ui_t *ui_data)
 void h_chat_request(ui_t *ui_data, connection_t *c)
 {
     username_t newchat;
-    ui_get_input(ui_data, newchat, sizeof(username_t),
-                 "NAME OF THE NEW USER: ", name_filter);
+    ui_get_input(ui_data, newchat, sizeof(username_t), NEW_USER, name_filter);
 
+    if (!name_is_valid(newchat))
+    {
+        ui_render_window(ui_data);
+        return;
+    }
     if (!strncmp(newchat, c->my_name, sizeof(username_t)))
     {
         ui_warning(ui_data, ADD_YOURSELF);

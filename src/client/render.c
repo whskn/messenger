@@ -94,6 +94,11 @@ void render_get_input(ui_t *ui_data, char *printout, int printout_len,
     int width = getmaxx(ui_data->window);
     int height = getmaxy(ui_data->window);
 
+    attron(COLOR_PAIR(CLR_GRAYED_OUT));
+    mvprintw(height / 2 + 2, (width - sizeof(INSTR_INPUT) - 1) / 2,
+             "%s", INSTR_INPUT);
+    attron(COLOR_PAIR(CLR_NORMAL));
+
     mvprintw(height / 2 - 2, (width - printout_len) / 2, printout);
     if (badname)
     {
@@ -102,7 +107,6 @@ void render_get_input(ui_t *ui_data, char *printout, int printout_len,
                  BADNAME_WANRING);
     }
     mvprintw(height / 2, (width - input_len) / 2, "%s", input);
-    attron(COLOR_PAIR(CLR_NORMAL));
 }
 
 void render_top_bar(ui_t *ui_data)

@@ -158,11 +158,15 @@ int net_send(const int fd, void *buffer, const int size)
 
     ret = write(fd, &size, sizeof(int));
     if (ret != sizeof(int))
+    {
         return NET_ERROR;
+    }
 
     ret = write(fd, buffer, size);
     if (ret < 0)
+    {
         return NET_CHECK_ERRNO;
+    }
 
     return ret;
 }
