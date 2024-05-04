@@ -1,0 +1,11 @@
+FROM ubuntu:latest
+
+RUN apt update && \
+    apt upgrade && \
+    apt install -y sqlite3
+
+COPY server /usr/local/bin/server
+
+ENV SRV_PORT=6969
+
+CMD [ "server" ]
