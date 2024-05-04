@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <string.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
             user_id == NET_SERVER_OVERLOADED ||
             user_id == NET_CONN_DOWN)
         {
-            ui_warning(ui_data, loading_ani());
+            ui_warning(ui_data, strerror(errno));
             sleep(WARNING_SLEEP);
             continue;
         }
@@ -98,6 +99,12 @@ int main(int argc, char *argv[])
         else if (user_id == NET_NO_USER)
         {
             ui_warning(ui_data, NO_SUCH_USER);
+            sleep(WARNING_SLEEP);
+            break;
+        }
+        else if (user_id == NET_USER_ONLINE)
+        {
+            ui_warning(ui_data, USER_ONLINE);
             sleep(WARNING_SLEEP);
             break;
         }

@@ -19,11 +19,10 @@
 static int try_connect(const char *ip, const int port)
 {
     struct sockaddr_in address;
-    struct pollfd fds;
     int err;
     int fd;
 
-    fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0)
     {
         return NET_CHECK_ERRNO;
@@ -35,30 +34,10 @@ static int try_connect(const char *ip, const int port)
     inet_pton(AF_INET, ip, &address.sin_addr);
 
     err = connect(fd, (struct sockaddr *)&address, sizeof(address));
-    if (err < 0 && errno != EINPROGRESS)
+    if (err < 0)
     {
         close(fd);
         return NET_CHECK_ERRNO;
-    }
-
-    fds.fd = fd;
-    fds.events = POLLOUT;
-
-    err = poll(&fds, 1, CONNECTION_TIMEOUT);
-    if (err == -1)
-    {
-        close(fd);
-        return NET_CHECK_ERRNO;
-    }
-    else if (err == 0)
-    {
-        close(fd);
-        return NET_TIMEOUT;
-    }
-    else if (!(fds.revents & POLLOUT))
-    {
-        close(fd);
-        return NET_SERVER_ERROR;
     }
 
     return fd;
@@ -79,14 +58,26 @@ static int auth(int fd, username_t username, password_t password,
     memcpy(req.password, password, sizeof(username_t));
 
     ret = net_send(fd, &req, sizeof(auth_req_t));
+    if (ret < 0)
+    {
+        return NET_SERVER_ERROR;
+    }
 
     ret = poll(&fds, (nfds_t)1, AUTH_TIMEOUT);
+    if (!ret)
+    {
+        return NET_TIMEOUT;
+    }
     if (ret < 0)
+    {
         return NET_SERVER_ERROR;
+    }
 
     ret = net_read(fd, &rsp, sizeof(auth_res_t));
     if (ret < 0)
+    {
         return NET_SERVER_ERROR;
+    }
 
     switch (rsp.hs_code)
     {
@@ -102,6 +93,8 @@ static int auth(int fd, username_t username, password_t password,
         return NET_SERVER_ERROR;
     case HS_NO_USER:
         return NET_NO_USER;
+    case HS_USER_ONLINE:
+        return NET_USER_ONLINE;
     }
 
     return NET_SERVER_ERROR;
@@ -159,6 +152,7 @@ int net_send(const int fd, void *buffer, const int size)
     ret = write(fd, &size, sizeof(int));
     if (ret != sizeof(int))
     {
+        ret = errno;
         return NET_ERROR;
     }
 
@@ -221,6 +215,48 @@ int net_read(const int fd, void *buffer, const int size)
 
     return ret;
 }
+
+// int net_read(const int fd, void *buffer, const int size)
+// {
+//     int ret;
+
+//     int data_size;
+//     int sz_bytes_read = 0;
+//     int data_bytes_read = 0;
+
+//     do
+//     {
+//         ret = read(fd, &data_size, sizeof(int) - sz_bytes_read);
+//         if (!ret)
+//         {
+//             return NET_CONN_DOWN;
+//         }
+//         if (ret == -1)
+//         {
+//             return NET_ERROR;
+//         }
+//     } while ((sz_bytes_read += ret) < (int)sizeof(int));
+
+//     if (data_size > size)
+//     {
+//         return NET_ERROR;
+//     }
+
+//     do
+//     {
+//         ret = read(fd, buffer, data_size - data_bytes_read);
+//         if (!ret)
+//         {
+//             return NET_CONN_DOWN;
+//         }
+//         if (ret == -1)
+//         {
+//             return NET_ERROR;
+//         }
+//     } while ((data_bytes_read += ret) < data_size);
+
+//     return data_size;
+// }
 
 int net_flush(connection_t *c)
 {

@@ -66,6 +66,7 @@ typedef struct AuthRequestTag
 #define HS_USER_EXISTS 0x0004
 #define HS_GENERIC_ERROR 0x0008
 #define HS_NO_USER 0x0010
+#define HS_USER_ONLINE 0x0020
 
 typedef struct AuthResponseTag
 {

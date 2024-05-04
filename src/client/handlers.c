@@ -83,6 +83,8 @@ void h_send_msg(ui_t *ui_data, connection_t *c, msg_t *msg, db_t *db)
     if (ret != HST_SUCCESS)
     {
         ui_warning(ui_data, "Failed to save message in database");
+        sleep(WARNING_SLEEP);
+        ui_render_window(ui_data);
     }
 
     ui_render_window(ui_data);
@@ -143,6 +145,8 @@ void h_incoming_msg(ui_t *ui_data, void *buffer, db_t *db, const int size)
     if (!msg_is_valid(buffer, size))
     {
         ui_warning(ui_data, "Recieved an invalid message...");
+        sleep(WARNING_SLEEP);
+        ui_render_window(ui_data);
         ret = -2;
         return;
     }
@@ -161,6 +165,8 @@ void h_incoming_msg(ui_t *ui_data, void *buffer, db_t *db, const int size)
         if (ret != HST_SUCCESS)
         {
             ui_warning(ui_data, "Failed to insert new chat into db");
+            sleep(WARNING_SLEEP);
+            ui_render_window(ui_data);
             return;
         }
         ui_add_chat(ui_data, &new_chat);
@@ -173,6 +179,8 @@ void h_incoming_msg(ui_t *ui_data, void *buffer, db_t *db, const int size)
     if (ret != HST_SUCCESS)
     {
         ui_warning(ui_data, "Failed to save message in database\n");
+        sleep(WARNING_SLEEP);
+        ui_render_window(ui_data);
     }
     if (curr_chat && curr_chat->chat_id == msg->from_id)
     {
@@ -211,6 +219,8 @@ void h_add_new_chat(ui_t *ui_data, db_t *db, void *buffer)
     if (db_add_chat(db, &new_chat))
     {
         ui_warning(ui_data, "Failed to insert new chat into db");
+        sleep(WARNING_SLEEP);
+        ui_render_window(ui_data);
         return;
     }
     ui_add_chat(ui_data, &new_chat);

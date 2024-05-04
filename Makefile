@@ -108,4 +108,4 @@ clean:
 		  client1/client client2/client serv/server
 		
 rmdbs:
-	rm -f client1/database.db client2/database.db serv/database.db
+	rm -f client1/database.db client2/database.db client3/database.db client4/database.db serv/database.db

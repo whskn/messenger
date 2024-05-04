@@ -35,7 +35,7 @@ int main()
     signal(SIGPIPE, SIG_IGN);
 
     int port;
-    const char *port_str = "6969"; // getenv("SRV_PORT");
+    const char *port_str = getenv("SRV_PORT");
     if (port_str == NULL || !check_port(port_str))
     {
         logger(LOG_ERROR, "Missing or invalid SRV_PORT enviroment variable", false);
@@ -63,6 +63,7 @@ int main()
             logger(LOG_ERROR, "Failed to harvest new connection", true);
             continue;
         }
+        logger(LOG_INFO, "Connection harvested", false);
 
         pthread_t thread;
         MC_arg_t *args = (MC_arg_t *)malloc(sizeof(MC_arg_t));

@@ -23,6 +23,7 @@
 #define NET_NO_USER -8
 #define NET_ERROR -9
 #define NET_TIMEOUT -10
+#define NET_USER_ONLINE -11
 
 /* stores info about connection to server*/
 typedef struct

@@ -125,7 +125,9 @@ int put_in_table(conn_t **page, conn_t *my_conn, mtx_t *page_mtx)
             if (page[i]->user_id == my_conn->user_id)
             {
                 if (id >= 0)
+                {
                     page[id] = NULL;
+                }
                 pthread_mutex_unlock(page_mtx);
                 return -2;
             }
@@ -200,7 +202,7 @@ int blocking_read(conn_t *my_conn)
     }
     if (ret == NET_CONN_BROKE)
     {
-        logger(LOG_INFO, "User disconnected", false);
+        logger(LOG_INFO, "User disconnected: ", false);
         return -1;
     }
 
@@ -265,11 +267,13 @@ int auth_user(conn_t *my_conn, conn_t **page, mtx_t *page_mtx)
     if (ret == -1)
     {
         auth_resp(my_conn->fd, HS_MAX_CONN, 0);
+        pthread_mutex_unlock(&my_conn->conn_mtx);
         return NET_AUTH_FAIL;
     }
     if (ret == -2)
     {
-        auth_resp(my_conn->fd, HS_USER_EXISTS, 0);
+        auth_resp(my_conn->fd, HS_USER_ONLINE, 0);
+        pthread_mutex_unlock(&my_conn->conn_mtx);
         return NET_AUTH_FAIL;
     }
     id = ret;
@@ -277,10 +281,11 @@ int auth_user(conn_t *my_conn, conn_t **page, mtx_t *page_mtx)
     if (auth_resp(my_conn->fd, HS_SUCC, user.user_id) < 0)
     {
         page[id] = NULL;
+        pthread_mutex_unlock(&my_conn->conn_mtx);
         return NET_AUTH_FAIL;
     }
-    pthread_mutex_unlock(&my_conn->conn_mtx);
 
+    pthread_mutex_unlock(&my_conn->conn_mtx);
     return id;
 }
 
@@ -300,16 +305,7 @@ int auth_handler(conn_t *my_conn, conn_t **page, mtx_t *page_mtx)
 
 int serv_get_conn(int fd)
 {
-    int user_fd;
-
-    int ret = net_harvest_conn(fd);
-    if (ret < 0)
-    {
-        return ret;
-    }
-    user_fd = ret;
-
-    return user_fd;
+    return net_harvest_conn(fd);
 }
 
 /* Find a user in the page */
@@ -569,11 +565,10 @@ void *serv_manage_conn(void *void_args)
     if (my_conn_id < 0)
     {
         close_conn(my_conn);
-
         return NULL;
     }
 
-    logger(LOG_GOOD, "New connection!", false);
+    logger(LOG_GOOD, "User authed: ", false);
 
     // flush all pending messages to the connected user
     flush_pending(my_conn);

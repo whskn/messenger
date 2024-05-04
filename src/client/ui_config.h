@@ -42,7 +42,7 @@
 #define REGISTER "REGISTER"
 #define INSTRUCTION "Usage: UP-DOWN LEFT-RIGHT keys"
 
-#define INSTR_INPUT "Usage: ENTER - submit, CTRL+q - exit"
+#define INSTR_INPUT "Usage: ENTER - submit, CTRL+x - exit"
 #define NEW_USER "NAME OF THE NEW USER: "
 
 #define ADD_YOURSELF "You cannot have a chat with yourself"
@@ -51,6 +51,7 @@
 #define INVAL_NAME "Invalid name or password"
 #define USER_EXISTS "User already exists, choose another name"
 #define UNKNOWN_ERR "Unknown error..."
+#define USER_ONLINE "This user is currently online from another device"
 
 #define CONNECTING "Connecting"
 #define MAX_DOTS 3

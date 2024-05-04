@@ -24,7 +24,7 @@ VALUES (?, ?, ?, ?, ?, ?);"
 #define NEW_USER "INSERT INTO users(username, password) VALUES (?, ?);"
 
 #define GET_USER "SELECT user_id, username, password \
-FROM users WHERE username = ? LIMIT 1;"
+FROM users WHERE username = ?;"
 
 #define PULL_UNSENT "SELECT m.message_id, m.to_id, \
 m.from_id, m.timestamp, m.text_size, m.message, u.username \
