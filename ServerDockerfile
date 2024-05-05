@@ -2,6 +2,7 @@ FROM ubuntu:latest
 
 COPY bin/server /usr/local/bin/server
 
+# change port
 ENV SRV_PORT=6969
 
 RUN apt update && \
@@ -9,3 +10,6 @@ RUN apt update && \
     apt install -y sqlite3
 
 CMD [ "server" ]
+
+# don't forget to forward the port:
+#   docker run -p port:port image

@@ -53,7 +53,7 @@
 #define UNKNOWN_ERR "Unknown error..."
 #define USER_ONLINE "This user is currently online from another device"
 
-#define FOOTER_STR "ctrl + n - new chat; ctrl + x - quit; UP/DOWN - switch chats"
+#define FOOTER_STR "ctrl + n - new chat; ctrl + c - quit; UP/DOWN - switch chats"
 
 #define CONNECTING "Connecting"
 #define MAX_DOTS 3
