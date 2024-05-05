@@ -42,7 +42,7 @@ extern int net_connect(connection_t *c, const char *ip, const int port,
 extern int net_user_req(connection_t *c, username_t name);
 
 /* send message of mgs_t format */
-extern int net_send_msg(connection_t *c, msg_t *msg, char *buffer, const int to_id);
+extern int net_send_msg(connection_t *c, msg_t *msg);
 
 /* read message */
 extern int net_read(const int fd, void *buffer, const int size);
@@ -55,5 +55,8 @@ extern int net_flush(connection_t *c);
 
 /* send arbitrary data */
 extern int net_send(const int fd, void *buffer, const int size);
+
+extern int net_build_msg(connection_t *c, msg_t *msg, const char *buffer,
+                         const int to_id);
 
 #endif

@@ -59,15 +59,29 @@ void h_chat_down(ui_t *ui_data, db_t *db)
 
 void h_send_msg(ui_t *ui_data, connection_t *c, msg_t *msg, db_t *db)
 {
+    int ret;
     // if message field is empty, there is nothing to send
     if (ui_data->buffer[0] == '\0')
+    {
         return;
+    }
     // if no chat is selected, user is unknown
     if (CURR_CHAT(ui_data) == NULL)
+    {
         return;
+    }
 
-    int ret = net_send_msg(c, msg, ui_get_buffer(ui_data),
-                           CURR_CHAT(ui_data)->chat_id);
+    ret = net_build_msg(c, msg, ui_get_buffer(ui_data),
+                        CURR_CHAT(ui_data)->chat_id);
+    if (ret < 0)
+    {
+        ui_warning(ui_data, "Failed to send message");
+        sleep(WARNING_SLEEP);
+        ui_flush_stdin();
+        return;
+    }
+
+    ret = net_send_msg(c, msg);
     if (ret <= 0)
     {
         ui_warning(ui_data, "Failed to send message");

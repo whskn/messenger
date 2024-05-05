@@ -3,7 +3,7 @@
 #define _MESSAGE
 
 #include <stdbool.h>
-#include <time.h>
+#include <sys/time.h>
 
 // Max size of message buffer including \0
 #define MAX_MESSAGE_LEN 2048

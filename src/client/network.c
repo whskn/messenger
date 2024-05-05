@@ -1,4 +1,3 @@
-#include <time.h>
 #include <poll.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -7,6 +6,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -165,15 +165,15 @@ int net_send(const int fd, void *buffer, const int size)
     return ret;
 }
 
-int net_send_msg(connection_t *c,
-                 msg_t *msg,
-                 char *buffer,
-                 const int to_id)
+int net_build_msg(connection_t *c, msg_t *msg, const char *buffer,
+                  const int to_id)
 {
     if (buffer != msg->buffer)
     {
         strncpy(msg->buffer, buffer, MAX_MESSAGE_LEN);
     }
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
 
     msg->cc = CC_MSG;
     msg->from_id = c->my_id;
@@ -188,7 +188,12 @@ int net_send_msg(connection_t *c,
         return NET_INVAL_MSG_FORMAT;
     }
 
-    return net_send(c->fd, msg, msg_size);
+    return NET_SUCCESS;
+}
+
+int net_send_msg(connection_t *c, msg_t *msg)
+{
+    return net_send(c->fd, msg, msg_size(msg));
 }
 
 int net_read(const int fd, void *buffer, const int size)
