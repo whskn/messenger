@@ -1,4 +1,4 @@
-#include "../message.h"
+#include "../proto.h"
 #include "interface.h"
 #include "config.h"
 

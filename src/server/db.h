@@ -1,4 +1,4 @@
-#include "../message.h"
+#include "../proto.h"
 
 // Error codes
 #define HST_SUCCESS 0

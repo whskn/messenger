@@ -6,7 +6,7 @@
 #include "network.h"
 #include "db.h"
 #include "config.h"
-#include "../message.h"
+#include "../proto.h"
 #include "ui_config.h"
 #include "handlers.h"
 #include "../misc/validate.h"

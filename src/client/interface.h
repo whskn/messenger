@@ -4,7 +4,7 @@
 #include <ncurses.h>
 #include <time.h>
 
-#include "../message.h"
+#include "../proto.h"
 #include "config.h"
 
 /* Pointer to the n'th chat in chat list */

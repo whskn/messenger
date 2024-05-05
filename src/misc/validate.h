@@ -1,5 +1,5 @@
 #include <stdbool.h>
-#include "../message.h"
+#include "../proto.h"
 
 extern bool msg_is_valid(void *msg, const int size);
 extern bool name_is_valid(username_t name);

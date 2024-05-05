@@ -4,7 +4,7 @@
 #define _NETWORK
 
 #include <stdbool.h>
-#include "../message.h"
+#include "../proto.h"
 
 #define CONNECTION_TIMEOUT 2500
 #define AUTH_TIMEOUT 6000
