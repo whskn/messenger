@@ -6,7 +6,6 @@ ENV SRV_PORT=6969
 
 RUN apt update && \
     apt upgrade && \
-    apt install -y sqlite3 && \
-    ufw allow ${SRV_PORT}
+    apt install -y sqlite3
 
 CMD [ "server" ]
