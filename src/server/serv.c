@@ -202,7 +202,7 @@ int blocking_read(conn_t *my_conn)
     }
     if (ret == NET_CONN_BROKE)
     {
-        logger(LOG_INFO, "User disconnected: ", false);
+        logger(LOG_INFO, "User disconnected", false);
         return -1;
     }
 
@@ -568,7 +568,7 @@ void *serv_manage_conn(void *void_args)
         return NULL;
     }
 
-    logger(LOG_GOOD, "User authed: ", false);
+    logger(LOG_GOOD, "User authed", false);
 
     // flush all pending messages to the connected user
     flush_pending(my_conn);

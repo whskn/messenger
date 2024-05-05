@@ -374,6 +374,10 @@ void render_footer(ui_t *ui_data)
             mvprintw(row - l, i, " ");
         }
     }
+    if (max_x >= (int)sizeof(FOOTER_STR))
+    {
+        mvprintw(row, 0, FOOTER_STR);
+    }
     attroff(COLOR_PAIR(CLR_FOOTER));
 }
 

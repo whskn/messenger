@@ -155,11 +155,6 @@ int db_push(struct DB *db, msg_t *msg)
     sqlite3_stmt *stmt = NULL;
     int ret;
 
-    // adding chat if it's not existing
-    // ret = db_chat_exists(db, user_id);
-    // if (ret == HST_ERROR) return HST_ERROR;
-    // if (!ret) db_add_chat(db, msg->from_id, msg->from_name);
-
     ret = sqlite3_prepare(sqldb, PUSH, -1, &stmt, NULL);
     HANDLE_ERROR_STMT(ret, sqldb, stmt);
 

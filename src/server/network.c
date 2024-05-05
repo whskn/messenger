@@ -93,11 +93,19 @@ int net_read(const int fd, void *buffer, const int size)
     int packet_size;
 
     ret = read(fd, &packet_size, sizeof(int));
-    if (ret != sizeof(int))
+    if (ret < 0)
+    {
         return NET_ERROR;
+    }
+    if (ret == 0)
+    {
+        return NET_CONN_BROKE;
+    }
 
     if (packet_size > size)
+    {
         return NET_ERROR;
+    }
 
     ret = read(fd, buffer, packet_size);
     if (ret < 0)
